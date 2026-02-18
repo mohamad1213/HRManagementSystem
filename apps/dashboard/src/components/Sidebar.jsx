@@ -203,6 +203,7 @@ export default function Sidebar({ isOpen, onClose, activePage, onNavigate }) {
                     { icon: 'settings', label: 'Settings', path: '/settings' },
                     { icon: 'manage_accounts', label: 'User Management', path: '/user-management' },
                     { icon: 'help', label: 'Help Center', path: '/help-center' },
+                    { icon: 'info', label: 'About Project', path: '/about' },
                 ]} isCollapsed={isCollapsed} activePage={activePage} onNavigate={onNavigate} />
             </nav>
 

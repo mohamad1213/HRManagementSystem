@@ -1,75 +1,153 @@
-# HumaniZen - HR Management Dashboard
+# PROJECT DOCUMENTATION
+## HR MANAGEMENT SYSTEM
 
-HumaniZen is a modern, responsive, and comprehensive Human Resource Management System (HRMS) dashboard built with React and Vite. It provides a centralized platform for managing employees, recruitment, payroll, time off, and more.
+**Nama Project:** HR Management System – ReikPlus  
+**Domain:** hr.reikplus.id  
+**Tujuan Sistem:**  
+Aplikasi ini dibuat untuk membantu perusahaan dalam mengelola sumber daya manusia secara digital, terstruktur, dan terintegrasi.
 
-## 🚀 Features
+---
 
--   **Dashboard Overview**: Real-time insights into employee statistics, job openings, and project performance.
--   **Employee Management**: Detailed employee profiles, performance tracking, and team management.
--   **Recruitment**: Manage job postings, candidate pipelines, and interview schedules.
--   **Payroll**: View payslips, salary breakdowns, and earnings summaries.
--   **Time & Attendance**: Track attendance logs, leave requests, and work schedules.
--   **Document Center**: Centralized repository for company policies and documents.
--   **Settings & Help Center**: User preferences and support resources.
+### 🎯 1. Objectives
 
-## 🛠️ Tech Stack
+- Digitalisasi proses HR
+- Monitoring karyawan secara real-time
+- Otomatisasi payroll dan absensi
+- Manajemen dokumen dan approval workflow
 
--   **Frontend Framework**: [React](https://react.dev/)
--   **Build Tool**: [Vite](https://vitejs.dev/)
--   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
--   **Charts**: [Recharts](https://recharts.org/)
--   **Icons**: [Material Symbols](https://fonts.google.com/icons)
--   **Routing**: [React Router](https://reactrouter.com/)
+---
 
-## 📦 Getting Started
+### 🏗️ 2. System Architecture
 
-Follow these steps to set up the project locally.
+**Architecture Overview**  
+Sistem menggunakan arsitektur:
+- **Frontend:** React (Vite)
+- **Backend:** (Laravel / Node.js / Django — sesuaikan)
+- **Database:** (MySQL / PostgreSQL / MongoDB)
+- **Authentication:** JWT / Session-based
+- **Hosting:** VPS / Cloud Server
 
-### Prerequisites
+**High Level Flow**  
+User → Login → Dashboard → (Attendance / Employee Management / Payroll / Leave Request / Reporting)
 
--   Node.js (v18 or higher)
--   npm (v9 or higher)
+---
 
-### Installation
+### 📌 3. Core Features
 
-1.  **Clone the repository** (if applicable) or navigate to the project directory.
-2.  **Install dependencies**:
+#### 3.1 Employee Management
+- Tambah / edit / hapus karyawan
+- Detail profile (NIK, posisi, divisi, status kerja)
+- Upload dokumen (KTP, kontrak, dll)
 
-    ```bash
-    npm install
-    ```
+#### 3.2 Attendance Management
+- Check-in / Check-out
+- Monitoring kehadiran
+- Rekap absensi bulanan
+- Integrasi lokasi (jika ada GPS)
 
-### Running the Application
+#### 3.3 Leave & Permission Management
+- Pengajuan cuti
+- Approval HR / Manager
+- Tracking sisa cuti
+- History cuti
 
-Start the development server:
+#### 3.4 Payroll System
+- Perhitungan gaji otomatis
+- Tunjangan & Potongan
+- Generate slip gaji
+- Export PDF
 
-```bash
-npm run dev
-```
+#### 3.5 Document Management
+- Upload dokumen karyawan
+- Kontrak kerja & Surat peringatan
+- Penyimpanan cloud
 
-The application will be available at `http://localhost:5173` (or the port shown in your terminal).
+#### 3.6 Role & Permission
+- **Roles:** Super Admin, HR, Manager, Employee
+- **Fitur:** Hak akses berdasarkan role, Pembatasan fitur sesuai jabatan
 
-## 📂 Project Structure
+---
 
-```
-src/
-├── components/       # Reusable UI components (Sidebar, Header, etc.)
-├── pages/            # Page components (Dashboard, Recruitment, Payroll, etc.)
-├── App.jsx           # Main application component and routing setup
-├── main.jsx          # Entry point
-└── index.css         # Global styles and Tailwind imports
-```
+### 🗄️ 4. Database Design (Example Structure)
 
-## 📚 Documentation & Storybook
+- **Tabel Utama:** `users`, `employees`, `attendance`, `leaves`, `payroll`, `roles`, `permissions`
+- **Relasi:** 
+  - `employees` → `users`
+  - `attendance` → `employees`
+  - `leaves` → `employees`
+  - `payroll` → `employees`
 
-We use **Storybook** for developing and documenting UI components in isolation.
+---
 
-### Running Storybook
+### 🔄 5. Workflow System
 
-To start the Storybook server and view component documentation:
+**Proses Pengajuan Cuti**
+1. Employee submit leave request
+2. Manager review
+3. HR approval
+4. Status berubah (Approved / Rejected)
+5. Notifikasi dikirim
 
-```bash
-npm run storybook
-```
+---
 
-(Note: Ensure Storybook is initialized with `npx storybook@latest init` if not already set up).
+### 🔒 6. Security System
+- Enkripsi password (bcrypt)
+- Role-based access control (RBAC)
+- Token authentication
+- Validasi input
+- Proteksi CSRF
+
+---
+
+### 📊 7. Reporting & Analytics
+- Rekap absensi bulanan
+- Laporan payroll
+- Statistik kehadiran
+- Grafik performa karyawan
+
+---
+
+### 🚀 8. Future Development Plan
+- Mobile App
+- Face Recognition Attendance
+- Integrasi BPJS
+- Integrasi Pajak PPH21
+- Integrasi Accounting
+
+---
+
+### 📗 USER MANUAL (Singkat)
+
+**Login**
+1. Buka `hr.reikplus.id`
+2. Masukkan email & password
+3. Klik login
+
+**Input Karyawan**
+1. Masuk menu **Employee**
+2. Klik **Add Employee**
+3. Isi data -> Save
+
+**Proses Payroll**
+1. Masuk menu **Payroll**
+2. Pilih bulan
+3. Generate -> Export slip
+
+---
+
+### 📦 Installation & Setup (Developer)
+
+**Prerequisites:** Node.js (v18+), npm (v9+)
+
+1. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+2. **Run Development Server**:
+   ```bash
+   npm run dev
+   ```
+3. **Run Storybook** (Component Documentation):
+   ```bash
+   npm run storybook
+   ```

@@ -16,6 +16,7 @@ import PaySlip from './pages/PaySlip';
 import UserManagement from './pages/UserManagement';
 import Settings from './pages/Settings';
 import HelpCenter from './pages/HelpCenter';
+import About from './pages/About';
 import './index.css';
 
 function App() {
@@ -59,6 +60,7 @@ function App() {
         <Route path="/user-management" element={<UserManagement onMenuClick={() => setSidebarOpen(true)} />} />
         <Route path="/settings" element={<Settings onMenuClick={() => setSidebarOpen(true)} />} />
         <Route path="/help-center" element={<HelpCenter onMenuClick={() => setSidebarOpen(true)} />} />
+        <Route path="/about" element={<About onMenuClick={() => setSidebarOpen(true)} />} />
         {/* Fallback routes */}
         <Route path="*" element={<Dashboard onMenuClick={() => setSidebarOpen(true)} />} />
       </Routes>
