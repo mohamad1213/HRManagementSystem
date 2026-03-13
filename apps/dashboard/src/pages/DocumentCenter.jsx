@@ -1,28 +1,22 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import DocumentDetailView from './DocumentDetailView';
 import ReviewDocumentModal from './ReviewDocumentModal';
+import UploadDocumentModal from './UploadDocumentModal';
+import { getDocuments, uploadDocument, deleteDocument as deleteDocApi, reviewDocument as reviewDocApi } from '../services/document';
 
 export default function DocumentCenter({ onMenuClick }) {
-
-    const initialDocuments = [
-        { id: 1, name: 'Data Protection Policy 2025', filename: 'gdpr_compliance_2025.pdf', category: 'Legal', type: 'pdf', size: '1.45 MB', date: 'Oct 24, 2025', status: 'Approved', uploadedBy: { name: 'Michael Chen', role: 'HR Manager', avatar: 'https://i.pravatar.cc/150?u=michael' }, catColor: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400' },
-        { id: 2, name: 'Employee Handbook 2025', filename: 'handbook_v2.pdf', category: 'HR Policy', type: 'pdf', size: '2.4 MB', date: 'Oct 22, 2025', status: 'Approved', uploadedBy: { name: 'Sarah Jones', role: 'HR Director', avatar: 'https://i.pravatar.cc/150?u=sarah' }, catColor: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400' },
-        { id: 3, name: 'Q4 Budget Report', filename: 'finance_q4.xlsx', category: 'Finance', type: 'xls', size: '850 KB', date: 'Oct 20, 2025', status: 'Awaiting', uploadedBy: { name: 'David Lee', role: 'Finance Analyst', avatar: 'https://i.pravatar.cc/150?u=david' }, catColor: 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400' },
-        { id: 4, name: 'Remote Work Guidelines', filename: 'wfh_policy.docx', category: 'HR Policy', type: 'doc', size: '500 KB', date: 'Oct 18, 2025', status: 'Approved', uploadedBy: { name: 'Emily White', role: 'HR Specialist', avatar: 'https://i.pravatar.cc/150?u=emily' }, catColor: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400' },
-        { id: 5, name: 'Vendor Contracts Summary', filename: 'contracts_log.xlsx', category: 'Legal', type: 'xls', size: '1.2 MB', date: 'Oct 15, 2025', status: 'Rejected', uploadedBy: { name: 'James Wilson', role: 'Legal Counsel', avatar: 'https://i.pravatar.cc/150?u=james' }, catColor: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400' },
-        { id: 6, name: 'New Hire Orientation', filename: 'orientation_deck.pdf', category: 'HR Policy', type: 'pdf', size: '5.6 MB', date: 'Oct 12, 2025', status: 'Approved', uploadedBy: { name: 'Sarah Jones', role: 'HR Director', avatar: 'https://i.pravatar.cc/150?u=sarah' }, catColor: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400' },
-        { id: 7, name: 'Travel Expense Policy', filename: 'expense_policy.docx', category: 'Finance', type: 'doc', size: '420 KB', date: 'Oct 10, 2025', status: 'Awaiting', uploadedBy: { name: 'David Lee', role: 'Finance Analyst', avatar: 'https://i.pravatar.cc/150?u=david' }, catColor: 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400' },
-        { id: 8, name: 'Non-Disclosure Agreement', filename: 'standard_nda.pdf', category: 'Legal', type: 'pdf', size: '200 KB', date: 'Oct 08, 2025', status: 'Approved', uploadedBy: { name: 'Michael Chen', role: 'HR Manager', avatar: 'https://i.pravatar.cc/150?u=michael' }, catColor: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400' },
-    ];
+    const [documents, setDocuments] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
     const stats = [
-        { label: 'Total Document', value: '874', trend: '10%', icon: 'description', color: 'bg-primary/10 text-primary', iconBg: 'bg-primary/20 text-primary' },
-        { label: 'Approved', value: '312', trend: '12%', icon: 'check_circle', color: 'bg-green-100 text-green-600', iconBg: 'bg-green-100 text-green-600' },
-        { label: 'Awaiting', value: '42', trend: '5%', icon: 'schedule', color: 'bg-yellow-100 text-yellow-600', iconBg: 'bg-yellow-100 text-yellow-600' },
-        { label: 'Rejected', value: '18', trend: '2%', icon: 'cancel', color: 'bg-red-100 text-red-600', iconBg: 'bg-red-100 text-red-600' },
+        { label: 'Total Document', value: documents.length.toString(), trend: '10%', icon: 'description', color: 'bg-primary/10 text-primary', iconBg: 'bg-primary/20 text-primary' },
+        { label: 'Approved', value: documents.filter(d => d.status === 'Approved').length.toString(), trend: '12%', icon: 'check_circle', color: 'bg-green-100 text-green-600', iconBg: 'bg-green-100 text-green-600' },
+        { label: 'Awaiting', value: documents.filter(d => d.status === 'Awaiting').length.toString(), trend: '5%', icon: 'schedule', color: 'bg-yellow-100 text-yellow-600', iconBg: 'bg-yellow-100 text-yellow-600' },
+        { label: 'Rejected', value: documents.filter(d => d.status === 'Rejected').length.toString(), trend: '2%', icon: 'cancel', color: 'bg-red-100 text-red-600', iconBg: 'bg-red-100 text-red-600' },
     ];
 
-    const [documents, setDocuments] = useState(initialDocuments);
     const [viewDocument, setViewDocument] = useState(null);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
@@ -43,17 +37,35 @@ export default function DocumentCenter({ onMenuClick }) {
     const statusOptions = ['All Status', 'Approved', 'Awaiting', 'Rejected'];
     const categoryOptions = ['All Categories', 'Legal', 'HR Policy', 'Finance'];
 
+    const fetchDocuments = async () => {
+        try {
+            setLoading(true);
+            const data = await getDocuments();
+            setDocuments(Array.isArray(data) ? data : (data.results || []));
+            setError(null);
+        } catch (err) {
+            console.error("Failed to fetch documents:", err);
+            setError("Failed to load documents.");
+        }
+        finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchDocuments();
+    }, []);
+
     const filteredDocuments = useMemo(() => {
         return documents.filter(doc => {
             const searchLower = searchTerm.toLowerCase();
 
             const matchesSearch =
-                doc.name.toLowerCase().includes(searchLower) ||
-                doc.filename.toLowerCase().includes(searchLower) ||
-                doc.category.toLowerCase().includes(searchLower) ||
-                doc.status.toLowerCase().includes(searchLower) ||
-                doc.uploadedBy.name.toLowerCase().includes(searchLower) ||
-                doc.uploadedBy.role.toLowerCase().includes(searchLower);
+                (doc.name?.toLowerCase() || '').includes(searchLower) ||
+                (doc.filename?.toLowerCase() || '').includes(searchLower) ||
+                (doc.category?.toLowerCase() || '').includes(searchLower) ||
+                (doc.status?.toLowerCase() || '').includes(searchLower) ||
+                (doc.uploaded_by_name?.toLowerCase() || '').includes(searchLower);
 
             const matchesStatus =
                 statusFilter === 'All Status' ||
@@ -66,7 +78,7 @@ export default function DocumentCenter({ onMenuClick }) {
             const matchesDate = () => {
                 if (!startDate && !endDate) return true;
 
-                const docDate = new Date(doc.date);
+                const docDate = new Date(doc.uploaded_date);
 
                 if (startDate && new Date(startDate) > docDate) return false;
                 if (endDate && new Date(endDate) < docDate) return false;
@@ -80,12 +92,11 @@ export default function DocumentCenter({ onMenuClick }) {
 
 
     const getFileIcon = (type) => {
-        switch (type) {
-            case 'pdf': return { icon: 'picture_as_pdf', color: 'text-red-500' };
-            case 'doc': return { icon: 'description', color: 'text-blue-500' };
-            case 'xls': return { icon: 'table_view', color: 'text-green-500' };
-            default: return { icon: 'article', color: 'text-gray-500' };
-        }
+        const t = type?.toLowerCase();
+        if (t?.includes('pdf')) return { icon: 'picture_as_pdf', color: 'text-red-500' };
+        if (t?.includes('doc')) return { icon: 'description', color: 'text-blue-500' };
+        if (t?.includes('xls') || t?.includes('csv')) return { icon: 'table_view', color: 'text-green-500' };
+        return { icon: 'article', color: 'text-gray-500' };
     };
 
     const getStatusStyle = (status) => {
@@ -106,36 +117,52 @@ export default function DocumentCenter({ onMenuClick }) {
         }
     };
 
-    const handleDeleteDocument = (id) => {
+    const handleDeleteDocument = async (id) => {
         if (window.confirm('Are you sure you want to delete this document?')) {
-            setDocuments(prev => prev.filter(doc => doc.id !== id));
-            setViewDocument(null);
+            try {
+                await deleteDocApi(id);
+                setDocuments(prev => prev.filter(doc => doc.id !== id));
+                setViewDocument(null);
+            } catch (err) {
+                alert("Failed to delete document");
+            }
         }
     };
 
     const handleOpenReview = (doc) => {
         setReviewDocument(doc);
         setIsReviewModalOpen(true);
-        setActionDropdownId(null); // Close dropdown
+        setActionDropdownId(null);
     };
 
-    const handleConfirmReview = (docId, decision, notes) => {
-        // Here you would typically make an API call to update the document status
-        console.log(`Document ${docId} reviewed: ${decision} with notes: ${notes}`);
+    const handleConfirmReview = async (docId, decision, notes) => {
+        try {
+            await reviewDocApi(docId, decision, notes);
+            setDocuments(prevDocs => prevDocs.map(doc => {
+                if (doc.id === docId) {
+                    return {
+                        ...doc,
+                        status: decision === 'approve' ? 'Approved' : 'Rejected',
+                        review_notes: notes
+                    };
+                }
+                return doc;
+            }));
+            setIsReviewModalOpen(false);
+            setReviewDocument(null);
+        } catch (err) {
+            alert("Failed to review document");
+        }
+    };
 
-        // Optimistic update for demo purposes
-        setDocuments(prevDocs => prevDocs.map(doc => {
-            if (doc.id === docId) {
-                return {
-                    ...doc,
-                    status: decision === 'approve' ? 'Approved' : 'Rejected'
-                };
-            }
-            return doc;
-        }));
-
-        setIsReviewModalOpen(false);
-        setReviewDocument(null);
+    const handleUploadComplete = async (formData) => {
+        try {
+            await uploadDocument(formData);
+            fetchDocuments();
+            setIsUploadModalOpen(false);
+        } catch (err) {
+            throw err;
+        }
     };
 
     if (viewDocument) {
@@ -167,7 +194,10 @@ export default function DocumentCenter({ onMenuClick }) {
                         <p className="text-sm text-text-muted-light dark:text-text-muted-dark mt-1">Manage schedules, attendance, events, and leave requests in one place</p>
                     </div>
                 </div>
-                <button className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors shadow-lg shadow-purple-500/30">
+                <button
+                    onClick={() => setIsUploadModalOpen(true)}
+                    className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors shadow-lg shadow-purple-500/30"
+                >
                     Upload Document
                     <span className="material-symbols-rounded text-lg">cloud_upload</span>
                 </button>
@@ -300,105 +330,126 @@ export default function DocumentCenter({ onMenuClick }) {
                 </div>
 
                 {/* Table */}
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-background-light dark:bg-slate-800/50 text-[12px] font-semibold text-text-muted-light dark:text-text-muted-dark">
-                                <th className="p-4 pl-6 font-medium whitespace-nowrap">Nama File</th>
-                                <th className="p-4 font-medium whitespace-nowrap">Category</th>
-                                <th className="p-4 font-medium whitespace-nowrap">Uploaded By</th>
-                                <th className="p-4 font-medium whitespace-nowrap">Uploaded Date</th>
-                                <th className="p-4 font-medium whitespace-nowrap">Size</th>
-                                <th className="p-4 font-medium whitespace-nowrap">Status</th>
-                                <th className="p-4 font-medium text-right pr-6 whitespace-nowrap">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border-light dark:divide-border-dark text-[12px]">
-                            {filteredDocuments.length > 0 ? filteredDocuments.map((doc) => {
-                                const fileIcon = getFileIcon(doc.type);
-                                return (
-                                    <tr key={doc.id} className="hover:bg-background-light/50 dark:hover:bg-slate-800/50 transition-colors group">
-                                        <td className="p-4 pl-6 align-middle">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 flex items-center justify-center shadow-sm flex-shrink-0">
-                                                    <span className={`material-symbols-rounded ${fileIcon.color}`}>{fileIcon.icon}</span>
-                                                </div>
-                                                <div>
-                                                    <div className="font-semibold text-text-main-light dark:text-text-main-dark text-[12px]">{doc.name}</div>
-                                                    <div className="text-[10px] text-text-muted-light dark:text-text-muted-dark">{doc.filename}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="p-4 align-middle">
-                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-medium whitespace-nowrap ${doc.catColor}`}>
-                                                <span className="w-1.5 h-1.5 rounded-full bg-current inline-block mr-1.5 mb-0.5"></span>
-                                                {doc.category}
-                                            </span>
-                                        </td>
-                                        <td className="p-4 align-middle">
-                                            <div className="flex items-center gap-2">
-                                                <img src={doc.uploadedBy.avatar} alt={doc.uploadedBy.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-                                                <div>
-                                                    <div className="text-[12px] font-bold text-text-main-light dark:text-text-main-dark whitespace-nowrap">{doc.uploadedBy.name}</div>
-                                                    <div className="text-[10px] text-text-muted-light dark:text-text-muted-dark whitespace-nowrap">{doc.uploadedBy.role}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="p-4 text-text-main-light dark:text-text-main-dark align-middle whitespace-nowrap">{doc.date}</td>
-                                        <td className="p-4 text-text-main-light dark:text-text-main-dark align-middle whitespace-nowrap">{doc.size}</td>
-                                        <td className="p-4 align-middle">
-                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium whitespace-nowrap ${getStatusStyle(doc.status)}`}>
-                                                <span className="material-symbols-rounded text-[14px]">{getStatusIcon(doc.status)}</span>
-                                                {doc.status}
-                                            </span>
-                                        </td>
-                                        <td className="p-4 text-right pr-6 align-middle relative">
-                                            <button
-                                                className="text-text-muted-light dark:text-text-muted-dark hover:text-primary transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setActionDropdownId(actionDropdownId === doc.id ? null : doc.id);
-                                                    setShowStatusDropdown(false);
-                                                    setShowCategoryDropdown(false);
-                                                }}
-                                            >
-                                                <span className="material-symbols-rounded">more_vert</span>
-                                            </button>
+                <div className="overflow-x-auto min-h-[300px]">
+                    {loading ? (
+                        <div className="w-full h-[300px] flex items-center justify-center">
+                            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                    ) : error ? (
+                        <div className="w-full h-[300px] flex flex-col items-center justify-center gap-2">
+                            <span className="material-symbols-rounded text-red-500 text-4xl">error</span>
+                            <p className="text-text-muted-light dark:text-text-muted-dark font-medium">{error}</p>
+                            <button onClick={fetchDocuments} className="text-primary hover:underline font-medium">Try again</button>
+                        </div>
+                    ) : (
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-background-light dark:bg-slate-800/50 text-[12px] font-semibold text-text-muted-light dark:text-text-muted-dark">
+                                    <th className="p-4 pl-6 font-medium whitespace-nowrap">Nama File</th>
+                                    <th className="p-4 font-medium whitespace-nowrap">Category</th>
+                                    <th className="p-4 font-medium whitespace-nowrap">Uploaded By</th>
+                                    <th className="p-4 font-medium whitespace-nowrap">Uploaded Date</th>
+                                    <th className="p-4 font-medium whitespace-nowrap">Size</th>
+                                    <th className="p-4 font-medium whitespace-nowrap">Status</th>
+                                    <th className="p-4 font-medium text-right pr-6 whitespace-nowrap">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border-light dark:divide-border-dark text-[12px]">
+                                {filteredDocuments.length > 0 ? filteredDocuments.map((doc) => {
+                                    const fileIcon = getFileIcon(doc.file_type);
+                                    const categoryStyles = {
+                                        'Legal': 'text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400',
+                                        'HR Policy': 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400',
+                                        'Finance': 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400',
+                                    };
+                                    const catColor = categoryStyles[doc.category] || 'text-gray-600 bg-gray-100';
 
-                                            {actionDropdownId === doc.id && (
-                                                <div className="absolute right-8 top-10 w-32 bg-white dark:bg-slate-800 border border-border-light dark:border-border-dark rounded-lg shadow-lg z-50 overflow-hidden text-left">
-                                                    <button
-                                                        className="w-full px-4 py-2 text-[12px] text-text-main-light dark:text-text-main-dark hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-2"
-                                                        onClick={() => setViewDocument(doc)}
-                                                    >
-                                                        <span className="material-symbols-rounded text-sm">visibility</span> Details
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleOpenReview(doc)}
-                                                        className="w-full px-4 py-2 text-[12px] text-text-main-light dark:text-text-main-dark hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-2"
-                                                    >
-                                                        <span className="material-symbols-rounded text-sm">rate_review</span> Review
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteDocument(doc.id)}
-                                                        className="w-full px-4 py-2 text-[12px] text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
-                                                    >
-                                                        <span className="material-symbols-rounded text-sm">delete</span> Delete
-                                                    </button>
+                                    return (
+                                        <tr key={doc.id} className="hover:bg-background-light/50 dark:hover:bg-slate-800/50 transition-colors group">
+                                            <td className="p-4 pl-6 align-middle">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 flex items-center justify-center shadow-sm flex-shrink-0">
+                                                        <span className={`material-symbols-rounded ${fileIcon.color}`}>{fileIcon.icon}</span>
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-semibold text-text-main-light dark:text-text-main-dark text-[12px]">{doc.name}</div>
+                                                        <div className="text-[10px] text-text-muted-light dark:text-text-muted-dark">{doc.filename}</div>
+                                                    </div>
                                                 </div>
-                                            )}
+                                            </td>
+                                            <td className="p-4 align-middle">
+                                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-medium whitespace-nowrap ${catColor}`}>
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-current inline-block mr-1.5 mb-0.5"></span>
+                                                    {doc.category}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 align-middle">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                                                        {doc.uploaded_by_name?.charAt(0) || 'U'}
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-[12px] font-bold text-text-main-light dark:text-text-main-dark whitespace-nowrap">{doc.uploaded_by_name}</div>
+                                                        <div className="text-[10px] text-text-muted-light dark:text-text-muted-dark whitespace-nowrap">Uploader</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-text-main-light dark:text-text-main-dark align-middle whitespace-nowrap">{doc.uploaded_date}</td>
+                                            <td className="p-4 text-text-main-light dark:text-text-main-dark align-middle whitespace-nowrap">{doc.size}</td>
+                                            <td className="p-4 align-middle">
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium whitespace-nowrap ${getStatusStyle(doc.status)}`}>
+                                                    <span className="material-symbols-rounded text-[14px]">{getStatusIcon(doc.status)}</span>
+                                                    {doc.status}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-right pr-6 align-middle relative">
+                                                <button
+                                                    className="text-text-muted-light dark:text-text-muted-dark hover:text-primary transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setActionDropdownId(actionDropdownId === doc.id ? null : doc.id);
+                                                        setShowStatusDropdown(false);
+                                                        setShowCategoryDropdown(false);
+                                                    }}
+                                                >
+                                                    <span className="material-symbols-rounded">more_vert</span>
+                                                </button>
+
+                                                {actionDropdownId === doc.id && (
+                                                    <div className="absolute right-8 top-10 w-32 bg-white dark:bg-slate-800 border border-border-light dark:border-border-dark rounded-lg shadow-lg z-50 overflow-hidden text-left">
+                                                        <button
+                                                            className="w-full px-4 py-2 text-[12px] text-text-main-light dark:text-text-main-dark hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-2"
+                                                            onClick={() => setViewDocument(doc)}
+                                                        >
+                                                            <span className="material-symbols-rounded text-sm">visibility</span> Details
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleOpenReview(doc)}
+                                                            className="w-full px-4 py-2 text-[12px] text-text-main-light dark:text-text-main-dark hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-2"
+                                                        >
+                                                            <span className="material-symbols-rounded text-sm">rate_review</span> Review
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteDocument(doc.id)}
+                                                            className="w-full px-4 py-2 text-[12px] text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+                                                        >
+                                                            <span className="material-symbols-rounded text-sm">delete</span> Delete
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                }) : (
+                                    <tr>
+                                        <td colSpan="7" className="p-8 text-center text-text-muted-light dark:text-text-muted-dark">
+                                            No documents found matching your criteria.
                                         </td>
                                     </tr>
-                                );
-                            }) : (
-                                <tr>
-                                    <td colSpan="7" className="p-8 text-center text-text-muted-light dark:text-text-muted-dark">
-                                        No documents found matching your criteria.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                )}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
 
                 {/* Footer / Pagination */}
@@ -408,11 +459,6 @@ export default function DocumentCenter({ onMenuClick }) {
                         Prev
                     </button>
                     <button className="w-7 h-7 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center justify-center border border-primary/20">1</button>
-                    <button className="w-7 h-7 rounded-lg text-text-muted-light dark:text-text-muted-dark text-xs font-medium flex items-center justify-center hover:bg-gray-50 dark:hover:bg-slate-700">2</button>
-                    <button className="w-7 h-7 rounded-lg text-text-muted-light dark:text-text-muted-dark text-xs font-medium flex items-center justify-center hover:bg-gray-50 dark:hover:bg-slate-700">3</button>
-                    <button className="w-7 h-7 rounded-lg text-text-muted-light dark:text-text-muted-dark text-xs font-medium flex items-center justify-center hover:bg-gray-50 dark:hover:bg-slate-700">4</button>
-                    <span className="text-text-muted-light pb-2">...</span>
-                    <button className="w-7 h-7 rounded-lg text-text-muted-light dark:text-text-muted-dark text-xs font-medium flex items-center justify-center hover:bg-gray-50 dark:hover:bg-slate-700">127</button>
                     <button className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary-dark flex items-center gap-1 shadow-lg shadow-purple-500/20">
                         Next
                         <span className="material-symbols-rounded text-sm">chevron_right</span>
@@ -425,6 +471,12 @@ export default function DocumentCenter({ onMenuClick }) {
                 onClose={() => setIsReviewModalOpen(false)}
                 document={reviewDocument}
                 onConfirm={handleConfirmReview}
+            />
+
+            <UploadDocumentModal
+                isOpen={isUploadModalOpen}
+                onClose={() => setIsUploadModalOpen(false)}
+                onUpload={handleUploadComplete}
             />
         </main>
     );

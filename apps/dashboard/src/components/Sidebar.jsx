@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 // Nav Item Component
 const NavItem = ({ icon, label, active, isCollapsed, onClick }) => (
@@ -79,6 +80,7 @@ const NavGroup = ({ title, items, isCollapsed, activePage, onNavigate }) => {
  * @param {Function} props.onNavigate - Callback function to handle navigation
  */
 export default function Sidebar({ isOpen, onClose, activePage, onNavigate }) {
+    const { user, logout } = useAuth();
     // Collapsed state (desktop only)
     const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -87,17 +89,17 @@ export default function Sidebar({ isOpen, onClose, activePage, onNavigate }) {
 
     const mainNav = [
         { icon: 'grid_view', label: 'Dashboard', path: '/' },
-        { icon: 'analytics', label: 'HR Analytics', path: '/hr-analytics' },
+        { icon: 'analytics', label: 'HR Analytics', path: '/hr-analytics', roles: ['Admin', 'HR Manager'] },
         { icon: 'description', label: 'Document Center', path: '/doc-center' },
         { icon: 'campaign', label: 'Event and Announcement', path: '/event-announcement' },
     ];
 
     const teamNav = [
-        { icon: 'group', label: 'Employee', path: '/employee-management' },
-        { icon: 'donut_large', label: 'Workforce Management', path: '/workforce-management' },
-        { icon: 'person_add', label: 'Recruitment', path: '/recruitment' },
-        { icon: 'speed', label: 'Performance', path: '/performance' },
-        { icon: 'payments', label: 'Payroll', path: '/payroll' },
+        { icon: 'group', label: 'Employee', path: '/employee-management', roles: ['Admin', 'HR Manager', 'Manager'] },
+        { icon: 'donut_large', label: 'Workforce Management', path: '/workforce-management', roles: ['Admin', 'HR Manager', 'Manager'] },
+        { icon: 'person_add', label: 'Recruitment', path: '/recruitment', roles: ['Admin', 'HR Manager', 'Manager'] },
+        { icon: 'speed', label: 'Performance', path: '/performance', roles: ['Admin', 'HR Manager', 'Manager'] },
+        { icon: 'payments', label: 'Payroll', path: '/payroll', roles: ['Admin', 'HR Manager'] },
     ];
 
     const mySpaceNav = [
@@ -105,6 +107,23 @@ export default function Sidebar({ isOpen, onClose, activePage, onNavigate }) {
         { icon: 'timelapse', label: 'My Time Off', path: '/my-time-off' },
         { icon: 'receipt_long', label: 'Pay Slip', path: '/pay-slip' },
     ];
+
+    const systemNav = [
+        { icon: 'settings', label: 'Settings', path: '/settings' },
+        { icon: 'manage_accounts', label: 'User Management', path: '/user-management', roles: ['Admin'] },
+        { icon: 'help', label: 'Help Center', path: '/help-center' },
+        { icon: 'info', label: 'About Project', path: '/about' },
+    ];
+
+    const filterByRole = (items) => {
+        if (!user) return [];
+        return items.filter(item => !item.roles || item.roles.includes(user.role));
+    };
+
+    const filteredMainNav = filterByRole(mainNav);
+    const filteredTeamNav = filterByRole(teamNav);
+    const filteredMySpaceNav = filterByRole(mySpaceNav);
+    const filteredSystemNav = filterByRole(systemNav);
 
     return (
         <aside
@@ -196,21 +215,16 @@ export default function Sidebar({ isOpen, onClose, activePage, onNavigate }) {
 
             {/* Navigation */}
             <nav className="flex-1 overflow-y-auto overflow-x-hidden">
-                <NavGroup title="MAIN" items={mainNav} isCollapsed={isCollapsed} activePage={activePage} onNavigate={onNavigate} />
-                <NavGroup title="TEAM MANAGEMENT" items={teamNav} isCollapsed={isCollapsed} activePage={activePage} onNavigate={onNavigate} />
-                <NavGroup title="MY SPACE" items={mySpaceNav} isCollapsed={isCollapsed} activePage={activePage} onNavigate={onNavigate} />
-                <NavGroup title="SYSTEM MANAGEMENT" items={[
-                    { icon: 'settings', label: 'Settings', path: '/settings' },
-                    { icon: 'manage_accounts', label: 'User Management', path: '/user-management' },
-                    { icon: 'help', label: 'Help Center', path: '/help-center' },
-                    { icon: 'info', label: 'About Project', path: '/about' },
-                ]} isCollapsed={isCollapsed} activePage={activePage} onNavigate={onNavigate} />
+                {filteredMainNav.length > 0 && <NavGroup title="MAIN" items={filteredMainNav} isCollapsed={isCollapsed} activePage={activePage} onNavigate={onNavigate} />}
+                {filteredTeamNav.length > 0 && <NavGroup title="TEAM MANAGEMENT" items={filteredTeamNav} isCollapsed={isCollapsed} activePage={activePage} onNavigate={onNavigate} />}
+                {filteredMySpaceNav.length > 0 && <NavGroup title="MY SPACE" items={filteredMySpaceNav} isCollapsed={isCollapsed} activePage={activePage} onNavigate={onNavigate} />}
+                {filteredSystemNav.length > 0 && <NavGroup title="SYSTEM MANAGEMENT" items={filteredSystemNav} isCollapsed={isCollapsed} activePage={activePage} onNavigate={onNavigate} />}
             </nav>
 
             {/* Profile */}
             <div className="p-4 mt-auto border-t border-border-light dark:border-border-dark">
-                <div className={`flex items-center p-2 rounded-xl transition-colors ${isCollapsed
-                    ? 'justify-center border-0 bg-transparent hover:bg-background-light dark:hover:bg-slate-800'
+                <div className={`group flex items-center p-2 rounded-xl transition-all ${isCollapsed
+                    ? 'justify-center border-0 bg-transparent hover:bg-red-50 dark:hover:bg-red-900/10'
                     : 'justify-between border border-border-light dark:border-border-dark bg-background-light dark:bg-slate-800'
                     }`}>
                     <div className="flex items-center gap-3">
@@ -221,15 +235,33 @@ export default function Sidebar({ isOpen, onClose, activePage, onNavigate }) {
                         />
                         {!isCollapsed && (
                             <div className="whitespace-nowrap overflow-hidden">
-                                <div className="text-sm font-bold text-text-main-light dark:text-text-main-dark">Olivia Mei Nakamura</div>
-                                <div className="text-xs text-text-muted-light dark:text-text-muted-dark">HR. Staff</div>
+                                <div className="text-sm font-bold text-text-main-light dark:text-text-main-dark transition-colors group-hover:text-red-500">
+                                    {user?.first_name ? `${user.first_name} ${user.last_name || ''}` : user?.email || 'User'}
+                                </div>
+                                <div className="text-xs text-text-muted-light dark:text-text-muted-dark capitalize">{user?.role || 'Staff'}</div>
                             </div>
                         )}
                     </div>
                     {!isCollapsed && (
-                        <button className="text-text-muted-light dark:text-text-muted-dark hover:text-primary">
-                            <span className="material-symbols-rounded">unfold_more</span>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm('Are you sure you want to sign out?')) {
+                                    logout();
+                                }
+                            }}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted-light dark:text-text-muted-dark hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 transition-all"
+                            title="Sign Out"
+                        >
+                            <span className="material-symbols-rounded text-xl">logout</span>
                         </button>
+                    )}
+                    {isCollapsed && (
+                        <button
+                            onClick={logout}
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            title="Sign Out"
+                        />
                     )}
                 </div>
             </div>

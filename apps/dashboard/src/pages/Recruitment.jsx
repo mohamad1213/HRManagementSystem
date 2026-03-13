@@ -3,52 +3,9 @@ import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, LineChart, Lin
 
 // --- MOCK DATA ---
 
-const JOB_CARDS = [
-    {
-        id: 1,
-        title: 'Full Stack React Developer',
-        source: 'LinkedIn',
-        sourceIcon: 'linked_services', // Using Material Symbol as placeholder or similar
-        location: 'Jakarta, SCBD (Onsite)',
-        time: '3h',
-        tags: ['Developer', 'Website', 'React'],
-        applicants: 49,
-        color: 'bg-blue-500',
-        iconColor: 'text-white'
-    },
-    {
-        id: 2,
-        title: 'Technical Product Manager',
-        source: 'Indeed',
-        sourceIcon: 'info',
-        location: 'Jakarta, SCBD (Onsite)',
-        time: '20h',
-        tags: ['Developer', 'Website', 'React'],
-        applicants: 49,
-        color: 'bg-blue-700',
-        iconColor: 'text-white'
-    },
-    {
-        id: 3,
-        title: 'UX Engineering',
-        source: 'Glassdoor',
-        sourceIcon: 'door_front',
-        location: 'Jakarta, SCBD (Onsite)',
-        time: '8h',
-        tags: ['Developer', 'Website', 'React'],
-        applicants: 49,
-        color: 'bg-green-500',
-        iconColor: 'text-white'
-    }
-];
+// Note: We will use jobs and candidates from state in the component.
+// These mock constants will be phased out or used as fallback.
 
-const PIPELINE_DATA = [
-    { stage: 'Appying Period', value: 129, color: '#3B82F6', total: 129 },
-    { stage: 'Screening', value: 12, color: '#FBBF24', total: 12 },
-    { stage: 'Interviews', value: 45, color: '#F97316', total: 45 },
-    { stage: 'Technical Test', value: 12, color: '#EC4899', total: 12 },
-    { stage: 'Onboarding', value: 4, color: '#8B5CF6', total: 4 },
-];
 
 const PIPELINE_ROWS = [
     {
@@ -1373,25 +1330,66 @@ const CreateJob = ({ onBack }) => {
     );
 };
 
+import { getJobs, getCandidates } from '../services/recruitment';
+import { getDashboardSummary } from '../services/dashboard';
+
 const Recruitment = ({ onMenuClick }) => {
     const [activeTab, setActiveTab] = useState('Overview');
     const [selectedCandidate, setSelectedCandidate] = useState(null);
     const [selectedJob, setSelectedJob] = useState(null);
     const [isCreatingJob, setIsCreatingJob] = useState(false);
 
+    const [jobs, setJobs] = useState([]);
+    const [candidates, setCandidates] = useState([]);
+    const [summary, setSummary] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [jobsData, candidatesData, summaryData] = await Promise.all([
+                    getJobs(),
+                    getCandidates(),
+                    getDashboardSummary()
+                ]);
+
+                setJobs(jobsData);
+                setCandidates(candidatesData);
+                setSummary(summaryData);
+            } catch (err) {
+                console.error('Failed to fetch recruitment data', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
     // If candidate selected, show detail view
     if (selectedCandidate) {
-        return <CandidateDetail onBack={() => setSelectedCandidate(null)} />;
+        return <CandidateDetail candidateId={selectedCandidate.id} onBack={() => setSelectedCandidate(null)} />;
     }
 
     // If job selected, show detail view
     if (selectedJob) {
-        return <JobDetail onBack={() => setSelectedJob(null)} />;
+        return <JobDetail jobId={selectedJob.id} onBack={() => setSelectedJob(null)} />;
     }
 
     // If creating job, show create view
     if (isCreatingJob) {
-        return <CreateJob onBack={() => setIsCreatingJob(false)} />;
+        return <CreateJob onBack={() => setIsCreatingJob(false)} onCreated={() => {
+            setIsCreatingJob(false);
+            // Refresh jobs
+            getJobs().then(setJobs);
+        }} />;
+    }
+
+    if (loading) {
+        return (
+            <div className="flex-1 flex items-center justify-center bg-background-light dark:bg-background-dark h-screen">
+                <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+            </div>
+        );
     }
 
     return (
@@ -1484,24 +1482,24 @@ const Recruitment = ({ onMenuClick }) => {
                 {activeTab === 'Overview' && (
                     <>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {JOB_CARDS.map(job => (
-                                <div key={job.id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                            {(jobs.slice(0, 3).length > 0 ? jobs.slice(0, 3) : []).map(job => (
+                                <div key={job.id} onClick={() => setSelectedJob(job)} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="flex gap-3">
-                                            <div className={`w-10 h-10 rounded-lg ${job.source === 'LinkedIn' ? 'bg-[#0077B5]' : job.source === 'Indeed' ? 'bg-[#003A9B]' : 'bg-[#0CAA41]'} flex items-center justify-center text-white text-xl font-bold`}>
-                                                {job.source === 'LinkedIn' && <span className="material-symbols-rounded">post_add</span>}
-                                                {job.source === 'Indeed' && <span className="material-symbols-rounded">info</span>}
-                                                {job.source === 'Glassdoor' && <span className="material-symbols-rounded">door_front</span>}
+                                            <div className="w-10 h-10 rounded-lg bg-purple-600 flex items-center justify-center text-white text-xl font-bold">
+                                                <span className="material-symbols-rounded">work</span>
                                             </div>
                                             <div>
-                                                <h3 className="font-bold text-slate-800 text-sm">{job.title}</h3>
+                                                <h3 className="font-bold text-slate-800 text-sm truncate max-w-[120px]">{job.title}</h3>
                                                 <div className="flex items-center gap-1 text-xs text-slate-400 mt-0.5">
-                                                    <span>{job.source}</span>
+                                                    <span>{job.department_name}</span>
                                                     <span className="material-symbols-rounded text-[14px] text-purple-500">verified</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <span className="text-xs text-slate-400 font-medium">{job.time}</span>
+                                        <span className="text-xs text-slate-400 font-medium">
+                                            {new Date(job.posted_at).toLocaleDateString()}
+                                        </span>
                                     </div>
 
                                     <div className="flex items-center gap-1 text-xs text-slate-500 mb-4">
@@ -1510,15 +1508,16 @@ const Recruitment = ({ onMenuClick }) => {
                                     </div>
 
                                     <div className="flex gap-2 mb-6">
-                                        {job.tags.map((tag, i) => (
-                                            <span key={i} className={`px-2 py-1 rounded-md text-[10px] font-bold ${i === 0 ? 'bg-pink-50 text-pink-500' : i === 1 ? 'bg-yellow-50 text-yellow-600' : 'bg-purple-50 text-purple-600'}`}>
-                                                {tag}
-                                            </span>
-                                        ))}
+                                        <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-pink-50 text-pink-500">
+                                            {job.employment_type}
+                                        </span>
+                                        <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-purple-50 text-purple-600">
+                                            {job.experience_level}
+                                        </span>
                                     </div>
 
                                     <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                                        <span className="text-sm font-bold text-slate-700">{job.applicants} Applicant</span>
+                                        <span className="text-sm font-bold text-slate-700">{job.applicant_count || 0} Applicant</span>
                                         <button className="text-xs font-bold text-slate-400 hover:text-[#7C3AED] underline decoration-slate-300 hover:decoration-[#7C3AED] transition-all">Show detail</button>
                                     </div>
                                 </div>
@@ -1547,15 +1546,20 @@ const Recruitment = ({ onMenuClick }) => {
 
                                 {/* Pipeline Rows */}
                                 <div className="space-y-6">
-                                    {PIPELINE_ROWS.map((row, idx) => (
-                                        <div key={idx} className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr] gap-2 items-center">
+                                    {jobs.slice(0, 4).map((job, idx) => (
+                                        <div key={job.id} className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr] gap-2 items-center">
                                             <div>
-                                                <h4 className="font-bold text-slate-800 text-xs sm:text-sm truncate pr-2">{row.role}</h4>
-                                                <p className="text-[10px] text-slate-400 mt-1">{row.type}</p>
+                                                <h4 className="font-bold text-slate-800 text-xs sm:text-sm truncate pr-2">{job.title}</h4>
+                                                <p className="text-[10px] text-slate-400 mt-1">{job.employment_type} • {job.location}</p>
                                             </div>
-                                            {row.data.map((val, i) => (
+                                            {[
+                                                summary?.recruitment_pipeline?.['Applied'] || 0,
+                                                summary?.recruitment_pipeline?.['Screening'] || 0,
+                                                summary?.recruitment_pipeline?.['Interview'] || 0,
+                                                summary?.recruitment_pipeline?.['Technical Test'] || 0,
+                                                summary?.recruitment_pipeline?.['Offered'] || summary?.recruitment_pipeline?.['Hired'] || 0
+                                            ].map((val, i) => (
                                                 <div key={i} className="relative h-8 flex items-center justify-center">
-                                                    {/* Arrow shape background */}
                                                     <div
                                                         className={`absolute inset-0 flex items-center justify-center text-white text-xs font-bold
                                                     ${val === 0 ? 'bg-slate-100 text-slate-300' :
@@ -1572,9 +1576,6 @@ const Recruitment = ({ onMenuClick }) => {
                                             ))}
                                         </div>
                                     ))}
-                                    <div>
-                                        <h4 className="font-bold text-slate-800 text-xs sm:text-sm">Business</h4>
-                                    </div>
                                 </div>
                             </div>
 
@@ -1673,35 +1674,32 @@ const Recruitment = ({ onMenuClick }) => {
 
                 {activeTab === 'Jobs' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 p-6">
-                        {JOBS_VIEW_DATA.map(job => (
-                            <div key={job.id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
+                        {jobs.map(job => (
+                            <div key={job.id} onClick={() => setSelectedJob(job)} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer">
                                 {/* Header */}
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center gap-2">
-                                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-500 text-[10px] font-bold border border-emerald-100 flex items-center gap-1">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> {job.status}
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${job.status === 'Open' ? 'bg-emerald-50 text-emerald-500 border-emerald-100' : 'bg-red-50 text-red-500 border-red-100'}`}>
+                                            <div className={`w-1.5 h-1.5 rounded-full ${job.status === 'Open' ? 'bg-emerald-500' : 'bg-red-500'}`}></div> {job.status}
                                         </span>
-                                        <span className="text-xs text-slate-400 font-medium">| {job.department}</span>
+                                        <span className="text-xs text-slate-400 font-medium">| {job.department_name}</span>
                                     </div>
-                                    <button className="text-slate-400 hover:text-slate-600">
+                                    <button className="text-slate-400 hover:text-slate-600" onClick={(e) => e.stopPropagation()}>
                                         <span className="material-symbols-rounded text-lg">more_vert</span>
                                     </button>
                                 </div>
 
                                 {/* Title Row */}
                                 <div className="flex items-start gap-3 mb-6">
-                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white text-xl font-bold shrink-0
-                            ${job.platform === 'LinkedIn' ? 'bg-[#0077B5]' : job.platform === 'Indeed' ? 'bg-[#003A9B]' : 'bg-[#0CAA41]'}`}>
-                                        {job.platform === 'LinkedIn' && <span className="material-symbols-rounded">post_add</span>}
-                                        {job.platform === 'Indeed' && <span className="material-symbols-rounded">info</span>}
-                                        {job.platform === 'Glassdoor' && <span className="material-symbols-rounded">door_front</span>}
+                                    <div className="w-10 h-10 rounded-lg bg-purple-600 flex items-center justify-center text-white text-xl font-bold shrink-0">
+                                        <span className="material-symbols-rounded">work</span>
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-slate-800 text-sm">{job.role}</h3>
+                                        <h3 className="font-bold text-slate-800 text-sm truncate max-w-[150px]">{job.title}</h3>
                                         <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-1 font-medium">
-                                            <span className="text-slate-500">{job.platform}</span>
+                                            <span className="text-slate-500">{job.department_name}</span>
                                             <span className="material-symbols-rounded text-[12px] text-blue-500">verified</span>
-                                            <span>| {job.date}</span>
+                                            <span>| {new Date(job.posted_at).toLocaleDateString()}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1711,43 +1709,35 @@ const Recruitment = ({ onMenuClick }) => {
                                     <div className="flex justify-between items-center text-xs">
                                         <div className="flex items-center gap-2 text-slate-500">
                                             <span className="material-symbols-rounded text-base text-slate-400">payments</span>
-                                            Salary
+                                            Salary Ref
                                         </div>
-                                        <div className="font-bold text-slate-700">{job.salary}</div>
+                                        <div className="font-bold text-slate-700">{job.salary_range || 'N/A'}</div>
                                     </div>
                                     <div className="flex justify-between items-center text-xs">
                                         <div className="flex items-center gap-2 text-slate-500">
                                             <span className="material-symbols-rounded text-base text-slate-400">group</span>
                                             Candidate Applied
                                         </div>
-                                        <div className="font-bold text-slate-700">{job.applied}</div>
-                                    </div>
-                                    <div className="flex justify-between items-center text-xs">
-                                        <div className="flex items-center gap-2 text-slate-500">
-                                            <span className="material-symbols-rounded text-base text-slate-400">assignment_turned_in</span>
-                                            Completed Interview
-                                        </div>
-                                        <div className="font-bold text-slate-700">{job.interviewed}</div>
+                                        <div className="font-bold text-slate-700">{job.applicant_count || 0}</div>
                                     </div>
                                 </div>
 
                                 {/* Tags */}
                                 <div className="flex flex-wrap gap-2 mb-4">
-                                    {job.tags.map((tag, i) => (
-                                        <span key={i} className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${i === 0 ? 'bg-pink-50 text-pink-500 border-pink-100' :
-                                            i === 1 ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
-                                                i === 2 ? 'bg-purple-50 text-purple-600 border-purple-100' :
-                                                    'bg-orange-50 text-orange-600 border-orange-100'
-                                            }`}>
-                                            {tag}
-                                        </span>
-                                    ))}
+                                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold border bg-pink-50 text-pink-500 border-pink-100">
+                                        {job.employment_type}
+                                    </span>
+                                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold border bg-purple-50 text-purple-600 border-purple-100">
+                                        {job.experience_level}
+                                    </span>
+                                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold border bg-yellow-50 text-yellow-600 border-yellow-100">
+                                        {job.location}
+                                    </span>
                                 </div>
 
                                 {/* Footer */}
                                 <div className="flex justify-end pt-2">
                                     <button
-                                        onClick={() => setSelectedJob(job)}
                                         className="text-xs font-bold text-[#7C3AED] hover:underline flex items-center gap-0.5"
                                     >
                                         Show detail <span className="material-symbols-rounded text-sm">chevron_right</span>
@@ -1799,67 +1789,74 @@ const Recruitment = ({ onMenuClick }) => {
 
                         {/* Table */}
                         <div className="overflow-x-auto wfm-scroll">
-                            <table className="w-full min-w-[1000px] text-left border-collapse">
-                                <thead className="bg-slate-50/50 border-b border-slate-100">
-                                    <tr>
-                                        {['Employee Name', 'Job Applied', 'Applied Date', 'Hiring Process', 'Score Match', 'Email', 'Phone', 'Action'].map((head) => (
-                                            <th key={head} className="px-4 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">{head}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100/50">
-                                    {CANDIDATES_DATA.map((row) => (
-                                        <tr key={row.id}
-                                            onClick={() => setSelectedCandidate(row)}
-                                            className="hover:bg-slate-50/30 transition-colors group cursor-pointer"
-                                        >
-                                            <td className="px-4 py-3 w-[250px]">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden flex-shrink-0">
-                                                        <img src={row.avatar} alt="avatar" className="w-full h-full object-cover" />
-                                                    </div>
-                                                    <p className="text-sm font-bold text-slate-700">{row.name}</p>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 text-sm font-semibold text-slate-700">{row.job}</td>
-                                            <td className="px-4 py-3 text-xs font-semibold text-slate-500">{row.date}</td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex flex-col gap-1.5">
-                                                    <span className="text-xs font-bold text-slate-700">{row.stage}</span>
-                                                    <div className="flex gap-1">
-                                                        {[1, 2, 3, 4, 5].map(step => (
-                                                            <div key={step} className={`h-1.5 w-6 rounded-full ${row.stage === 'On Boarding' && step <= 5 ? 'bg-[#8B5CF6]' : // Purple
-                                                                row.stage === 'Screening' && step <= 2 ? 'bg-[#FBBF24]' : // Amber
-                                                                    row.stage === 'Interview' && step <= 3 ? 'bg-[#F97316]' : // Orange
-                                                                        row.stage === 'Technical Test' && step <= 4 ? 'bg-[#EC4899]' : // Pink
-                                                                            row.stage === 'Applied' && step <= 1 ? 'bg-[#3B82F6]' : // Blue
-                                                                                'bg-slate-100'
-                                                                }`}></div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold ${row.scoreColor}`}>
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-current"></div>{row.score}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-xs font-semibold text-slate-600">{row.email}</td>
-                                            <td className="px-4 py-3 text-xs font-semibold text-slate-600 font-mono">{row.phone}</td>
-                                            <td className="px-4 py-3 text-center">
-                                                <button className="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors">
-                                                    <span className="material-symbols-rounded text-lg">more_vert</span>
-                                                </button>
-                                            </td>
+                            {/* Candidates Table */}
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-50">
+                                            <th className="pb-4 pr-4">Candidate Name</th>
+                                            <th className="pb-4 px-4">Job Title</th>
+                                            <th className="pb-4 px-4">Applied Date</th>
+                                            <th className="pb-4 px-4">Stage</th>
+                                            <th className="pb-4 px-4">Match Score</th>
+                                            <th className="pb-4 px-4">Contact</th>
+                                            <th className="pb-4 pl-4 text-right">Action</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {candidates.map((can) => (
+                                            <tr key={can.id} className="group hover:bg-slate-50/50 transition-colors">
+                                                <td className="py-4 pr-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <img src={`https://i.pravatar.cc/150?u=${can.id}`} className="w-8 h-8 rounded-lg object-cover" />
+                                                        <div>
+                                                            <div className="text-sm font-bold text-slate-800">{can.first_name} {can.last_name}</div>
+                                                            <div className="text-[10px] text-slate-400 font-medium">ID: {can.id}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-4 text-xs font-bold text-slate-600 truncate max-w-[120px]">{can.job_title}</td>
+                                                <td className="py-4 px-4 text-xs font-medium text-slate-500">{new Date(can.applied_at).toLocaleDateString()}</td>
+                                                <td className="py-4 px-4">
+                                                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${can.pipeline_stage === 'Hired' ? 'bg-emerald-50 text-emerald-600' :
+                                                        can.pipeline_stage === 'Interview' ? 'bg-orange-50 text-orange-600' :
+                                                            'bg-blue-50 text-blue-600'
+                                                        }`}>
+                                                        {can.pipeline_stage}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4">
+                                                    <span className={`px-2 py-1 rounded-md text-[10px] font-black text-purple-600 bg-purple-50`}>
+                                                        {Math.floor(Math.random() * 20) + 80}%
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <button className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-100 text-slate-400 hover:text-slate-600 hover:bg-white transition-all shadow-sm">
+                                                            <span className="material-symbols-rounded text-base">mail</span>
+                                                        </button>
+                                                        <button className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-100 text-slate-400 hover:text-slate-600 hover:bg-white transition-all shadow-sm">
+                                                            <span className="material-symbols-rounded text-base">call</span>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 pl-4 text-right">
+                                                    <button
+                                                        onClick={() => setSelectedCandidate(can)}
+                                                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                                                    >
+                                                        <span className="material-symbols-rounded">visibility</span>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 )}
             </div>
-
         </div>
     );
 };

@@ -1,6 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getEvents } from '../services/eventService';
+import NewEventModal from './NewEventModal';
+import EventDetailModal from './EventDetailModal';
 
 export default function EventAnnouncement({ onMenuClick }) {
+    const [events, setEvents] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
     const [dateRange, setDateRange] = useState('01 October - 31 October 2024');
 
     const stats = [
@@ -10,63 +18,40 @@ export default function EventAnnouncement({ onMenuClick }) {
         { label: 'Contracts Expiring', value: '431', sub: 'Employee', icon: 'contract', color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20' },
     ];
 
-    const timelineEvents = [
-        { id: 1, title: 'New Employee Onboarding', time: '09:00', duration: 2, color: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700', row: 1 },
-        { id: 2, title: 'New Employee Meeting', time: '09:00', duration: 1.5, color: 'bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/40 dark:text-pink-300 dark:border-pink-700', row: 2 },
-        { id: 3, title: 'New Employee Orientation', time: '13:00', duration: 2, color: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700', row: 2 },
-        { id: 4, title: 'New Employee Onboard...', time: '11:00', duration: 2.5, color: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700', row: 3 },
-        { id: 5, title: 'New Employee Onboard...', time: '16:00', duration: 3, color: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700', row: 4 },
-        { id: 6, title: 'New Employee Onboard...', time: '18:00', duration: 3, color: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700', row: 1 },
-        { id: 7, title: 'New Employee Onboard...', time: '17:00', duration: 4, color: 'bg-orange-50 text-orange-600 border-orange-100 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800', row: 5 },
-    ];
+    useEffect(() => {
+        fetchEvents();
+    }, []);
 
-    const upcomingEvents = [
-        {
-            id: 1,
-            name: 'AI insights platform for predictive analytics.',
-            start: '11 November 2025',
-            platform: 'Google Meet',
-            platformIcon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png',
-            members: [
-                'https://i.pravatar.cc/150?u=a',
-                'https://i.pravatar.cc/150?u=b',
-                'https://i.pravatar.cc/150?u=c'
-            ],
-            memberCount: '2+',
-            status: 'Important',
-            statusColor: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-        },
-        {
-            id: 2,
-            name: 'AI insights platform for predictive analytics.',
-            start: '11 November 2025',
-            platform: 'Google Meet',
-            platformIcon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png',
-            members: [
-                'https://i.pravatar.cc/150?u=d',
-                'https://i.pravatar.cc/150?u=e',
-                'https://i.pravatar.cc/150?u=f'
-            ],
-            memberCount: '2+',
-            status: 'High',
-            statusColor: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400'
-        },
-        {
-            id: 3,
-            name: 'AI insights platform for predictive analytics.',
-            start: '11 November 2025',
-            platform: 'Google Meet',
-            platformIcon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/1024px-Google_Meet_icon_%282020%29.svg.png',
-            members: [
-                'https://i.pravatar.cc/150?u=d',
-                'https://i.pravatar.cc/150?u=e',
-                'https://i.pravatar.cc/150?u=f'
-            ],
-            memberCount: '2+',
-            status: 'High',
-            statusColor: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400'
-        },
-    ];
+    const fetchEvents = async () => {
+        try {
+            setLoading(true);
+            const data = await getEvents();
+            setEvents(Array.isArray(data) ? data : (data.results || []));
+            setError(null);
+        } catch (err) {
+            console.error("Failed to fetch events:", err);
+            setError("Failed to load events.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getPriorityColor = (priority) => {
+        switch (priority) {
+            case 'Important': return 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400';
+            case 'High': return 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400';
+            default: return 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400';
+        }
+    };
+
+    const timelineEvents = (events || []).slice(0, 7).map((event, index) => ({
+        id: event.id,
+        title: event.title,
+        time: event.start_time?.substring(0, 5) || '00:00',
+        duration: 2, // Default duration for timeline preview
+        color: index % 2 === 0 ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-blue-100 text-blue-700 border-blue-200',
+        row: (index % 5) + 1
+    }));
 
     const hours = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'];
 
@@ -76,6 +61,7 @@ export default function EventAnnouncement({ onMenuClick }) {
     const TOTAL_HOURS = END_HOUR - START_HOUR;
 
     const getEventStyle = (time, duration) => {
+        if (!time) return { left: '0%', width: '0%' };
         const [hour, minute] = time.split(':').map(Number);
         const startOffset = (hour + minute / 60) - START_HOUR;
         const left = (startOffset / TOTAL_HOURS) * 100;
@@ -100,7 +86,10 @@ export default function EventAnnouncement({ onMenuClick }) {
                         <p className="text-sm text-text-muted-light dark:text-text-muted-dark mt-1">Manage schedules, attendance, events, and leave requests in one place</p>
                     </div>
                 </div>
-                <button className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-xl flex items-center gap-2 text-sm font-medium transition-colors shadow-lg shadow-purple-500/30">
+                <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-xl flex items-center gap-2 text-sm font-medium transition-colors shadow-lg shadow-purple-500/30"
+                >
                     New Event
                     <span className="material-symbols-rounded text-lg">add</span>
                 </button>
@@ -179,6 +168,7 @@ export default function EventAnnouncement({ onMenuClick }) {
                                 return (
                                     <div
                                         key={event.id}
+                                        onClick={() => setSelectedEvent(events.find(e => e.id === event.id))}
                                         className={`absolute h-12 rounded-xl text-xs font-medium flex items-center px-3 shadow-sm border border-l-4 ${event.color} hover:shadow-md transition-shadow cursor-pointer`}
                                         style={{
                                             ...style,
@@ -200,53 +190,87 @@ export default function EventAnnouncement({ onMenuClick }) {
             <div className="bg-surface-light dark:bg-surface-dark p-6 rounded-2xl shadow-soft border border-border-light dark:border-border-dark">
                 <h2 className="text-lg font-bold text-text-main-light dark:text-text-main-dark mb-6">Upcoming Event</h2>
                 <div className="space-y-4">
-                    {upcomingEvents.map((event) => (
-                        <div key={event.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-4 border border-border-light dark:border-border-dark rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors gap-4">
-                            <div className="flex-grow">
-                                <div className="text-xs text-text-muted-light dark:text-text-muted-dark mb-1">Meet Name</div>
-                                <div className="font-semibold text-text-main-light dark:text-text-main-dark text-sm">{event.name}</div>
-                            </div>
-
-                            <div className="min-w-[150px]">
-                                <div className="text-xs text-text-muted-light dark:text-text-muted-dark mb-1">Started at</div>
-                                <div className="font-medium text-text-main-light dark:text-text-main-dark text-sm">{event.start}</div>
-                            </div>
-
-                            <div className="min-w-[150px] flex items-center gap-3">
-                                <img src={event.platformIcon} alt={event.platform} className="w-8 h-8 rounded p-1 bg-white border border-gray-100 dark:border-gray-700" />
-                                <div>
-                                    <div className="text-xs text-text-muted-light dark:text-text-muted-dark mb-0.5">Platform</div>
-                                    <div className="font-medium text-text-main-light dark:text-text-main-dark text-sm">{event.platform}</div>
+                    {loading ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-text-muted-light dark:text-text-muted-dark">
+                            <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
+                            <p>Loading events...</p>
+                        </div>
+                    ) : error ? (
+                        <div className="text-center py-12 text-red-500">
+                            <p>{error}</p>
+                            <button onClick={fetchEvents} className="text-primary hover:underline mt-2">Try again</button>
+                        </div>
+                    ) : events.length === 0 ? (
+                        <div className="text-center py-12 text-text-muted-light dark:text-text-muted-dark border border-dashed border-border-light dark:border-border-dark rounded-xl">
+                            <span className="material-symbols-rounded text-4xl mb-2">event_busy</span>
+                            <p>No upcoming events found.</p>
+                        </div>
+                    ) : (
+                        events.map((event) => (
+                            <div
+                                key={event.id}
+                                onClick={() => setSelectedEvent(event)}
+                                className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-4 border border-border-light dark:border-border-dark rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors gap-4 cursor-pointer group"
+                            >
+                                <div className="flex-grow">
+                                    <div className="text-xs text-text-muted-light dark:text-text-muted-dark mb-1">Meet Name</div>
+                                    <div className="font-semibold text-text-main-light dark:text-text-main-dark text-sm group-hover:text-primary transition-colors">{event.title}</div>
                                 </div>
-                            </div>
 
-                            <div className="min-w-[120px]">
-                                <div className="text-xs text-text-muted-light dark:text-text-muted-dark mb-2">Member</div>
-                                <div className="flex -space-x-2">
-                                    {event.members.map((src, i) => (
-                                        <img key={i} src={src} className="w-8 h-8 rounded-full border-2 border-white dark:border-slate-800" alt="Member" />
-                                    ))}
-                                    <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 border-2 border-white dark:border-slate-800 flex items-center justify-center text-[10px] font-bold text-gray-500 dark:text-gray-300">
-                                        {event.memberCount}
+                                <div className="min-w-[150px]">
+                                    <div className="text-xs text-text-muted-light dark:text-text-muted-dark mb-1">Started at</div>
+                                    <div className="font-medium text-text-main-light dark:text-text-main-dark text-sm">
+                                        {event.event_date ? new Date(event.event_date).toLocaleDateString() : 'No date'} at {event.start_time?.substring(0, 5) || '--:--'}
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="min-w-[100px] flex items-center justify-between gap-4 w-full lg:w-auto">
-                                <div>
-                                    <div className="text-xs text-text-muted-light dark:text-text-muted-dark mb-1">Status</div>
-                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${event.statusColor}`}>
-                                        <span className="w-1.5 h-1.5 bg-current rounded-full"></span>
-                                        {event.status}
-                                    </span>
+                                <div className="min-w-[150px] flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded p-1 bg-white border border-gray-100 dark:border-gray-700 flex items-center justify-center">
+                                        <span className="material-symbols-rounded text-primary text-xl">videocam</span>
+                                    </div>
+                                    <div>
+                                        <div className="text-xs text-text-muted-light dark:text-text-muted-dark mb-0.5">Platform</div>
+                                        <div className="font-medium text-text-main-light dark:text-text-main-dark text-sm">{event.platform}</div>
+                                    </div>
                                 </div>
-                                <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                                    <span className="material-symbols-rounded">more_vert</span>
-                                </button>
+
+                                <div className="min-w-[120px]">
+                                    <div className="text-xs text-text-muted-light dark:text-text-muted-dark mb-2">Organizer</div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary border-2 border-white dark:border-slate-800">
+                                            {event.created_by_name?.charAt(0) || 'O'}
+                                        </div>
+                                        <span className="text-xs font-medium text-text-main-light dark:text-text-main-dark">{event.created_by_name}</span>
+                                    </div>
+                                </div>
+
+                                <div className="min-w-[100px] flex items-center justify-between gap-4 w-full lg:w-auto">
+                                    <div>
+                                        <div className="text-xs text-text-muted-light dark:text-text-muted-dark mb-1">Status</div>
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${getPriorityColor(event.priority)}`}>
+                                            <span className="w-1.5 h-1.5 bg-current rounded-full"></span>
+                                            {event.priority}
+                                        </span>
+                                    </div>
+                                    <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                        <span className="material-symbols-rounded">more_vert</span>
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))
+                    )}
                 </div>
+                <NewEventModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    onSuccess={fetchEvents}
+                />
+                <EventDetailModal
+                    event={selectedEvent}
+                    isOpen={!!selectedEvent}
+                    onClose={() => setSelectedEvent(null)}
+                    onDeleteSuccess={fetchEvents}
+                />
             </div>
         </main>
     );

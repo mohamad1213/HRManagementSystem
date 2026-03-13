@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getAttendanceRecords, getAttendanceMetrics, clockIn, clockOut, startBreak, endBreak } from '../services/attendance';
 
 const MyAttendance = ({ onMenuClick }) => {
     // --- Mock Data ---
@@ -88,8 +89,53 @@ const MyAttendance = ({ onMenuClick }) => {
         }
     };
 
-    const [metrics, setMetrics] = useState(initialMetrics);
-    const [attendanceLog, setAttendanceLog] = useState(initialAttendanceLog);
+    const [metrics, setMetrics] = useState([]);
+    const [attendanceLog, setAttendanceLog] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [metricsData, logData] = await Promise.all([
+                getAttendanceMetrics(),
+                getAttendanceRecords()
+            ]);
+
+            // Map metrics
+            const mappedMetrics = [
+                { label: 'Days Present', value: metricsData.days_present.toString(), sub: '/days', footer: 'Auto-synced', icon: 'history', color: 'blue' },
+                { label: 'Days Absent', value: metricsData.days_absent.toString(), sub: '/days', footer: 'This month', icon: 'event_busy', color: 'rose' },
+                { label: 'Days Late', value: metricsData.days_late.toString(), sub: '/days', footer: 'Be punctual!', icon: 'schedule', color: 'orange' },
+                { label: 'Total Hours', value: metricsData.total_hours, sub: '', footer: 'Calculated from segments', icon: 'work_history', color: 'purple' },
+            ];
+            setMetrics(mappedMetrics);
+
+            // Map log data (paginated usually)
+            const logs = logData.results || logData;
+            const mappedLogs = Array.isArray(logs) ? logs.map(record => ({
+                date: new Date(record.date).toLocaleDateString('en-US', { weekday: 'long', day: 'numeric' }),
+                clockIn: record.clock_in ? record.clock_in.substring(0, 5) : '-',
+                clockOut: record.clock_out ? record.clock_out.substring(0, 5) : '-',
+                duration: record.duration || '-',
+                notes: record.notes?.length > 0,
+                segments: record.segments?.map(seg => ({
+                    type: seg.type.toLowerCase(),
+                    label: seg.type,
+                    // We don't have width in backend, need to calculate or use dummy for visualization
+                    width: '20%'
+                })) || []
+            })) : [];
+            setAttendanceLog(mappedLogs);
+        } catch (err) {
+            console.error('Failed to fetch attendance data', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
 
     // --- Detail Modal State ---
     const [showDetailModal, setShowDetailModal] = useState(false);
@@ -115,32 +161,32 @@ const MyAttendance = ({ onMenuClick }) => {
         setShowDetailModal(true);
     };
 
-    const handleNewAttendanceSubmit = () => {
-        console.log("Submitting new attendance:", newAttendanceData);
-        // Here you would typically make an API call.
-        // For functionality demonstration, we can simulate adding a new entry or updating status.
-
-        // Example: Add a new "Pending" log to the list (top)
-        const newLog = {
-            date: 'Today (New)',
-            clockIn: newAttendanceData.type === 'check-in' ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
-            clockOut: newAttendanceData.type === 'check-out' ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
-            duration: '-',
-            segments: [{ type: 'work', width: '0%', label: 'Started' }, { type: 'empty', width: '100%' }],
-            notes: newAttendanceData.notes.length > 0
-        };
-
-        setAttendanceLog([newLog, ...attendanceLog]);
-        setShowNewAttendanceModal(false);
-        setNewAttendanceData({ type: 'check-in', location: 'on-site', notes: '' }); // Reset
+    const handleNewAttendanceSubmit = async () => {
+        try {
+            if (newAttendanceData.type === 'check-in') {
+                await clockIn();
+            } else {
+                await clockOut();
+            }
+            fetchData();
+            setShowNewAttendanceModal(false);
+        } catch (err) {
+            alert(err.response?.data?.error || 'Attendance action failed');
+        }
     };
 
-    const handleBreakSubmit = () => {
-        console.log("Submitting break session:", breakData);
-        // Simulate adding a break
-        // close modal
-        setShowBreakModal(false);
-        setBreakData({ type: 'start', notes: '' });
+    const handleBreakSubmit = async () => {
+        try {
+            if (breakData.type === 'start') {
+                await startBreak();
+            } else {
+                await endBreak();
+            }
+            fetchData();
+            setShowBreakModal(false);
+        } catch (err) {
+            alert(err.response?.data?.error || 'Break action failed');
+        }
     };
 
     return (

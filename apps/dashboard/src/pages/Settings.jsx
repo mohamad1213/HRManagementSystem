@@ -1,10 +1,69 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { changePassword, updateProfile } from '../services/auth';
 
 const Settings = ({ onMenuClick }) => {
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('profile');
     const [darkMode, setDarkMode] = useState(false);
     const [emailNotifs, setEmailNotifs] = useState(true);
     const [pushNotifs, setPushNotifs] = useState(false);
+
+    // Profile state
+    const [profileForm, setProfileForm] = useState({
+        first_name: user?.first_name || '',
+        last_name: user?.last_name || '',
+        bio: user?.bio || ''
+    });
+
+    // Password state
+    const [passwords, setPasswords] = useState({
+        current: '',
+        new: '',
+        confirm: ''
+    });
+    const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleProfileUpdate = async () => {
+        setIsSaving(true);
+        setStatusMsg({ type: '', text: '' });
+        try {
+            await updateProfile({
+                first_name: profileForm.first_name,
+                last_name: profileForm.last_name,
+                bio: profileForm.bio
+            });
+            setStatusMsg({ type: 'success', text: 'Profile updated successfully' });
+        } catch (err) {
+            setStatusMsg({ type: 'error', text: err.response?.data?.error || 'Failed to update profile' });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handlePasswordChange = async () => {
+        if (!passwords.current || !passwords.new || !passwords.confirm) {
+            setStatusMsg({ type: 'error', text: 'All fields are required' });
+            return;
+        }
+        if (passwords.new !== passwords.confirm) {
+            setStatusMsg({ type: 'error', text: 'Passwords do not match' });
+            return;
+        }
+
+        setIsSaving(true);
+        setStatusMsg({ type: '', text: '' });
+        try {
+            await changePassword(passwords.current, passwords.new);
+            setStatusMsg({ type: 'success', text: 'Password updated successfully' });
+            setPasswords({ current: '', new: '', confirm: '' });
+        } catch (err) {
+            setStatusMsg({ type: 'error', text: err.response?.data?.error || 'Failed to update password' });
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const tabs = [
         { id: 'profile', label: 'My Profile', icon: 'person' },
@@ -29,8 +88,12 @@ const Settings = ({ onMenuClick }) => {
                         <p className="text-sm text-slate-500 mt-1">Manage your account preferences and workspace settings.</p>
                     </div>
                 </div>
-                <button className="px-5 py-2.5 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-900 transition-colors shadow-sm">
-                    Save Changes
+                <button
+                    onClick={activeTab === 'profile' ? handleProfileUpdate : undefined}
+                    disabled={isSaving}
+                    className="px-5 py-2.5 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-900 transition-colors shadow-sm disabled:opacity-50"
+                >
+                    {isSaving ? 'Saving...' : 'Save Changes'}
                 </button>
             </header>
 
@@ -44,8 +107,8 @@ const Settings = ({ onMenuClick }) => {
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === tab.id
-                                            ? 'bg-purple-50 text-purple-600'
-                                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                                        ? 'bg-purple-50 text-purple-600'
+                                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                                         }`}
                                 >
                                     <span className="material-symbols-rounded text-xl">{tab.icon}</span>
@@ -67,7 +130,7 @@ const Settings = ({ onMenuClick }) => {
                                     <div className="flex flex-col items-center gap-4">
                                         <div className="relative group cursor-pointer">
                                             <img
-                                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAorVehEOlkGaIxdayVc8KT5Ti-sQCLUIWWwWOgY7kxVJx6tibcHBX9E9m6Js6pY4JOYRzZA2y9nAMdau-sBtJNm_-uL6BWmNX7XO00GZvxu69BzvuEtH2M4s0hZmoGCRZTBVi5p8374vDeJQBKEf47ay2Du8MtVioKmeyBPTy8MrHDB26lufBcxFsnEwkvX6Xm-hGw6dfxL7slcsf6lG3qavHYlj7Lw2LHKS7abk3y64LAxYF71K1WFF2zJjYoha88brqc6dnc2wUv"
+                                                src={user?.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuAorVehEOlkGaIxdayVc8KT5Ti-sQCLUIWWwWOgY7kxVJx6tibcHBX9E9m6Js6pY4JOYRzZA2y9nAMdau-sBtJNm_-uL6BWmNX7XO00GZvxu69BzvuEtH2M4s0hZmoGCRZTBVi5p8374vDeJQBKEf47ay2Du8MtVioKmeyBPTy8MrHDB26lufBcxFsnEwkvX6Xm-hGw6dfxL7slcsf6lG3qavHYlj7Lw2LHKS7abk3y64LAxYF71K1WFF2zJjYoha88brqc6dnc2wUv"}
                                                 alt="Profile"
                                                 className="w-24 h-24 rounded-full object-cover border-4 border-slate-50"
                                             />
@@ -81,22 +144,42 @@ const Settings = ({ onMenuClick }) => {
                                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-2">
                                             <label className="text-xs font-bold text-slate-500 uppercase">First Name</label>
-                                            <input type="text" defaultValue="Olivia Mei" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all" />
+                                            <input
+                                                type="text"
+                                                value={profileForm.first_name}
+                                                onChange={(e) => setProfileForm({ ...profileForm, first_name: e.target.value })}
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                                            />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-xs font-bold text-slate-500 uppercase">Last Name</label>
-                                            <input type="text" defaultValue="Nakamura" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all" />
+                                            <input
+                                                type="text"
+                                                value={profileForm.last_name}
+                                                onChange={(e) => setProfileForm({ ...profileForm, last_name: e.target.value })}
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                                            />
                                         </div>
                                         <div className="space-y-2 md:col-span-2">
                                             <label className="text-xs font-bold text-slate-500 uppercase">Email Address</label>
                                             <div className="relative">
                                                 <span className="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">mail</span>
-                                                <input type="email" defaultValue="olivia.nakamura@humanizen.co" className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all" />
+                                                <input
+                                                    type="email"
+                                                    value={user?.email || ''}
+                                                    disabled
+                                                    className="w-full bg-slate-100 border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-semibold text-slate-400 cursor-not-allowed"
+                                                />
                                             </div>
                                         </div>
                                         <div className="space-y-2 md:col-span-2">
                                             <label className="text-xs font-bold text-slate-500 uppercase">Bio</label>
-                                            <textarea rows="3" defaultValue="HR Specialist with a passion for people and data-driven decisions." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all resize-none"></textarea>
+                                            <textarea
+                                                rows="3"
+                                                value={profileForm.bio}
+                                                onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all resize-none"
+                                            ></textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -182,12 +265,46 @@ const Settings = ({ onMenuClick }) => {
 
                                 <div className="space-y-6">
                                     <div className="space-y-4">
-                                        <h3 className="text-sm font-bold text-slate-800">Change Password</h3>
+                                        <div className="flex justify-between items-center">
+                                            <h3 className="text-sm font-bold text-slate-800">Change Password</h3>
+                                            {statusMsg.text && (
+                                                <span className={`text-xs font-bold ${statusMsg.type === 'success' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                    {statusMsg.text}
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <input type="password" placeholder="Current Password" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all" />
+                                            <input
+                                                type="password"
+                                                placeholder="Current Password"
+                                                value={passwords.current}
+                                                onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                                            />
                                             <div className="hidden md:block"></div>
-                                            <input type="password" placeholder="New Password" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all" />
-                                            <input type="password" placeholder="Confirm New Password" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all" />
+                                            <input
+                                                type="password"
+                                                placeholder="New Password"
+                                                value={passwords.new}
+                                                onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                                            />
+                                            <input
+                                                type="password"
+                                                placeholder="Confirm New Password"
+                                                value={passwords.confirm}
+                                                onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                                            />
+                                        </div>
+                                        <div className="flex justify-end mt-4">
+                                            <button
+                                                onClick={handlePasswordChange}
+                                                disabled={isSaving}
+                                                className="px-6 py-2 bg-slate-800 text-white text-xs font-bold rounded-xl hover:bg-slate-900 transition-all disabled:opacity-50"
+                                            >
+                                                {isSaving ? 'Updating...' : 'Update Password'}
+                                            </button>
                                         </div>
                                     </div>
 

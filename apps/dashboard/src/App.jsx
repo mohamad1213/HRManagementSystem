@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './pages/Login';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import HRAnalytics from './pages/HRAnalytics';
@@ -19,52 +22,71 @@ import HelpCenter from './pages/HelpCenter';
 import About from './pages/About';
 import './index.css';
 
-function App() {
+function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
+
+  // If we are on the login page, don't show sidebar
+  const isLoginPage = location.pathname === '/login';
+
   return (
     <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark transition-colors duration-200">
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
+      {!isLoginPage && (
+        <>
+          {sidebarOpen && (
+            <div
+              className="fixed inset-0 bg-black/50 z-40 md:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
+
+          <Sidebar
+            isOpen={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            activePage={location.pathname}
+            onNavigate={(path) => {
+              navigate(path);
+              setSidebarOpen(false);
+            }}
+          />
+        </>
       )}
 
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        activePage={location.pathname}
-        onNavigate={(path) => {
-          navigate(path);
-          setSidebarOpen(false);
-        }}
-      />
-
       <Routes>
-        <Route path="/" element={<Dashboard onMenuClick={() => setSidebarOpen(true)} />} />
-        <Route path="/hr-analytics" element={<HRAnalytics onMenuClick={() => setSidebarOpen(true)} />} />
-        <Route path="/doc-center" element={<DocumentCenter onMenuClick={() => setSidebarOpen(true)} />} />
-        <Route path="/event-announcement" element={<EventAnnouncement onMenuClick={() => setSidebarOpen(true)} />} />
-        <Route path="/employee-management" element={<EmployeeManagement onMenuClick={() => setSidebarOpen(true)} />} />
-        <Route path="/workforce-management" element={<WorkforceManagement onMenuClick={() => setSidebarOpen(true)} />} />
-        <Route path="/recruitment" element={<Recruitment onMenuClick={() => setSidebarOpen(true)} />} />
-        <Route path="/performance" element={<Performance onMenuClick={() => setSidebarOpen(true)} />} />
-        <Route path="/payroll" element={<Payroll onMenuClick={() => setSidebarOpen(true)} />} />
-        <Route path="/my-attendance" element={<MyAttendance onMenuClick={() => setSidebarOpen(true)} />} />
-        <Route path="/my-time-off" element={<MyTimeOff onMenuClick={() => setSidebarOpen(true)} />} />
-        <Route path="/pay-slip" element={<PaySlip onMenuClick={() => setSidebarOpen(true)} />} />
-        <Route path="/user-management" element={<UserManagement onMenuClick={() => setSidebarOpen(true)} />} />
-        <Route path="/settings" element={<Settings onMenuClick={() => setSidebarOpen(true)} />} />
-        <Route path="/help-center" element={<HelpCenter onMenuClick={() => setSidebarOpen(true)} />} />
-        <Route path="/about" element={<About onMenuClick={() => setSidebarOpen(true)} />} />
-        {/* Fallback routes */}
-        <Route path="*" element={<Dashboard onMenuClick={() => setSidebarOpen(true)} />} />
+        <Route path="/login" element={<Login />} />
+
+        <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<Dashboard onMenuClick={() => setSidebarOpen(true)} />} />
+          <Route path="/hr-analytics" element={<HRAnalytics onMenuClick={() => setSidebarOpen(true)} />} />
+          <Route path="/doc-center" element={<DocumentCenter onMenuClick={() => setSidebarOpen(true)} />} />
+          <Route path="/event-announcement" element={<EventAnnouncement onMenuClick={() => setSidebarOpen(true)} />} />
+          <Route path="/employee-management" element={<EmployeeManagement onMenuClick={() => setSidebarOpen(true)} />} />
+          <Route path="/workforce-management" element={<WorkforceManagement onMenuClick={() => setSidebarOpen(true)} />} />
+          <Route path="/recruitment" element={<Recruitment onMenuClick={() => setSidebarOpen(true)} />} />
+          <Route path="/performance" element={<Performance onMenuClick={() => setSidebarOpen(true)} />} />
+          <Route path="/payroll" element={<Payroll onMenuClick={() => setSidebarOpen(true)} />} />
+          <Route path="/my-attendance" element={<MyAttendance onMenuClick={() => setSidebarOpen(true)} />} />
+          <Route path="/my-time-off" element={<MyTimeOff onMenuClick={() => setSidebarOpen(true)} />} />
+          <Route path="/pay-slip" element={<PaySlip onMenuClick={() => setSidebarOpen(true)} />} />
+          <Route path="/user-management" element={<UserManagement onMenuClick={() => setSidebarOpen(true)} />} />
+          <Route path="/settings" element={<Settings onMenuClick={() => setSidebarOpen(true)} />} />
+          <Route path="/help-center" element={<HelpCenter onMenuClick={() => setSidebarOpen(true)} />} />
+          <Route path="/about" element={<About onMenuClick={() => setSidebarOpen(true)} />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

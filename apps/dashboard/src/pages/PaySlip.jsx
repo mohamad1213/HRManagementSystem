@@ -1,34 +1,66 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { getPayrollRecords, getLatestPayslip, downloadPayslip } from '../services/payroll';
 
 const PaySlip = ({ onMenuClick }) => {
-    // --- Mock Data ---
+    const [payrollHistory, setPayrollHistory] = useState([]);
+    const [latestPayslip, setLatestPayslip] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    // Salary Chart Data
-    const salaryData = [
-        { name: 'Net Pay', value: 9240, color: '#A855F7' }, // Purple
-        { name: 'Meal Allowance', value: 850, color: '#EC4899' }, // Pink
-        { name: 'Position Allowance', value: 5120, color: '#F97316' }, // Orange
-        { name: 'Skill Allowance', value: 2940, color: '#E2E8F0' }, // Slate-200 (approx)
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [historyRes, latestRes] = await Promise.all([
+                    getPayrollRecords(),
+                    getLatestPayslip()
+                ]);
+                setPayrollHistory(historyRes.results || historyRes);
+                setLatestPayslip(latestRes);
+            } catch (err) {
+                console.error('Failed to fetch payroll data', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    const handleDownload = async (id) => {
+        try {
+            const blob = await downloadPayslip(id);
+            const url = window.URL.createObjectURL(new Blob([blob]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `payslip_${id}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+        } catch (err) {
+            alert('Failed to download payslip');
+        }
+    };
+
+    if (loading) return <div className="p-8 text-center text-slate-400">Loading payroll data...</div>;
+
+    // Salary Chart Data (using latestPayslip or default)
+    const salaryData = latestPayslip ? [
+        { name: 'Net Pay', value: parseFloat(latestPayslip.net_pay), color: '#A855F7' },
+        { name: 'Allowance', value: parseFloat(latestPayslip.allowance), color: '#EC4899' },
+        { name: 'Incentive', value: parseFloat(latestPayslip.incentive), color: '#F97316' },
+        { name: 'Deductions', value: parseFloat(latestPayslip.deductions), color: '#E2E8F0' },
+    ] : [
+        { name: 'Net Pay', value: 0, color: '#A855F7' },
+        { name: 'Allowance', value: 0, color: '#EC4899' },
+        { name: 'Incentive', value: 0, color: '#F97316' },
+        { name: 'Deductions', value: 0, color: '#E2E8F0' },
     ];
 
     // Earnings Summary Data
     const earningsSummary = [
-        { label: 'Net Pay', amount: '$12.3432', icon: 'payments', color: 'blue', bg: 'bg-blue-50 text-blue-500' },
-        { label: 'Allowance', amount: '$12.3432', icon: 'wallet', color: 'purple', bg: 'bg-purple-50 text-purple-500' },
-        { label: 'Benefit', amount: '$12.3432', icon: 'card_giftcard', color: 'orange', bg: 'bg-orange-50 text-orange-500' },
-        { label: 'Net Payable', amount: '$12.3432', icon: 'account_balance_wallet', color: 'pink', bg: 'bg-pink-50 text-pink-500' },
-    ];
-
-    // Payroll Table Data
-    const payrollData = [
-        { element: 'Regular Pay', category: 'Net Salary', payment: '$5,200.00', reimbursement: '-', date: '12 October 2025', bank: 'BCA', status: 'Paid' },
-        { element: 'Bonus', category: 'Incentive', payment: '$120.00', reimbursement: '-', date: '12 October 2025', bank: 'BCA', status: 'Processing' },
-        { element: 'Commission', category: 'Incentive', payment: '$350.00', reimbursement: '-', date: '12 October 2025', bank: 'BCA', status: 'Pending' },
-        { element: 'Signing Bonus', category: 'Benefit', payment: '$510.00', reimbursement: '$200', date: '12 October 2025', bank: 'BCA', status: 'On Hold' },
-        { element: 'Business Expense', category: 'Overtime', payment: '$5,040.00', reimbursement: '-', date: '12 October 2025', bank: 'BCA', status: 'Failed' },
-        { element: 'Health Allowance', category: 'Overtime', payment: '$380.00', reimbursement: '$300', date: '12 October 2025', bank: 'BCA', status: 'Paid' },
-        { element: 'Medical PRO', category: 'Contribution', payment: '$95.00', reimbursement: '-', date: '12 October 2025', bank: 'BCA', status: 'Paid' },
+        { label: 'Gross Salary', amount: `$${latestPayslip?.gross_salary || '0'}`, icon: 'payments', color: 'blue', bg: 'bg-blue-50 text-blue-500' },
+        { label: 'Allowance', amount: `$${latestPayslip?.allowance || '0'}`, icon: 'wallet', color: 'purple', bg: 'bg-purple-50 text-purple-500' },
+        { label: 'Incentive', amount: `$${latestPayslip?.incentive || '0'}`, icon: 'card_giftcard', color: 'orange', bg: 'bg-orange-50 text-orange-500' },
+        { label: 'Net Payable', amount: `$${latestPayslip?.net_pay || '0'}`, icon: 'account_balance_wallet', color: 'pink', bg: 'bg-pink-50 text-pink-500' },
     ];
 
     // Helper for status badge styles
@@ -114,7 +146,7 @@ const PaySlip = ({ onMenuClick }) => {
                                 </ResponsiveContainer>
                                 {/* Center Text */}
                                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                    <span className="text-xl font-extrabold text-slate-800">$17.300</span>
+                                    <span className="text-xl font-extrabold text-slate-800">${latestPayslip?.gross_salary || '0'}</span>
                                     <span className="text-[10px] text-slate-400 font-semibold">Total salary</span>
                                 </div>
                             </div>
@@ -196,18 +228,21 @@ const PaySlip = ({ onMenuClick }) => {
                             <div className="flex justify-between items-start">
                                 <div>
                                     <h3 className="text-sm font-bold text-slate-800">View Payslip</h3>
-                                    <p className="text-[10px] text-slate-500 font-bold mt-1">Month of December</p>
+                                    <p className="text-[10px] text-slate-500 font-bold mt-1">Month of {latestPayslip ? new Date(latestPayslip.period_year, latestPayslip.period_month - 1).toLocaleString('default', { month: 'long' }) : '-'}</p>
                                 </div>
-                                <button className="px-4 py-1.5 bg-white text-[10px] font-bold text-slate-600 rounded-lg shadow-sm border border-slate-100 hover:bg-slate-50 transition-colors">
-                                    View all
+                                <button
+                                    onClick={() => latestPayslip && handleDownload(latestPayslip.id)}
+                                    className="px-4 py-1.5 bg-white text-[10px] font-bold text-slate-600 rounded-lg shadow-sm border border-slate-100 hover:bg-slate-50 transition-colors"
+                                >
+                                    Download
                                 </button>
                             </div>
                         </div>
 
                         {/* Net Payable */}
                         <div className="bg-[#F9F5FF] rounded-2xl p-6 flex flex-col justify-center h-40 border border-purple-50">
-                            <h3 className="text-2xl font-extrabold text-slate-800 mb-1">$34000</h3>
-                            <p className="text-[10px] text-slate-500 font-bold">Net Pay ble</p>
+                            <h3 className="text-2xl font-extrabold text-slate-800 mb-1">${latestPayslip?.net_pay || '0'}</h3>
+                            <p className="text-[10px] text-slate-500 font-bold">Net Payable</p>
                         </div>
                     </div>
                 </div>
@@ -252,40 +287,34 @@ const PaySlip = ({ onMenuClick }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {payrollData.map((row, index) => (
+                                {payrollHistory.map((row, index) => (
                                     <tr key={index} className="hover:bg-slate-50 transition-all border-b border-dashed border-slate-200 last:border-0 group">
-                                        <td className="px-6 py-5 text-xs font-bold text-slate-700">{row.element}</td>
+                                        <td className="px-6 py-5 text-xs font-bold text-slate-700">Monthly Salary</td>
                                         <td className="px-6 py-5">
                                             <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500">
-                                                <div className={`w-2 h-2 rounded-full ${row.category === 'Net Salary' ? 'bg-purple-500' : row.category === 'Incentive' ? 'bg-orange-500' : row.category === 'Benefit' ? 'bg-blue-500' : row.category === 'Overtime' ? 'bg-pink-500' : 'bg-teal-500'}`}></div>
-                                                {row.category}
+                                                <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                                                Regular Pay
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 text-xs font-bold text-slate-700">{row.payment}</td>
-                                        <td className="px-6 py-5 text-xs font-medium text-slate-500">{row.reimbursement}</td>
-                                        <td className="px-6 py-5 text-xs font-medium text-slate-500">{row.date}</td>
-                                        <td className="px-6 py-5 text-xs font-medium text-slate-500 uppercase">{row.bank}</td>
+                                        <td className="px-6 py-5 text-xs font-bold text-slate-700">${row.gross_salary}</td>
+                                        <td className="px-6 py-5 text-xs font-medium text-slate-500">${row.allowance}</td>
+                                        <td className="px-6 py-5 text-xs font-medium text-slate-500">{new Date(row.period_year, row.period_month - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}</td>
+                                        <td className="px-6 py-5 text-xs font-medium text-slate-500 uppercase">{row.bank_name || '-'}</td>
                                         <td className="px-6 py-5">
-                                            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-extrabold shadow-sm border border-transparent ${row.status === 'Paid' ? 'bg-green-50 text-green-600' :
-                                                row.status === 'Processing' ? 'bg-purple-50 text-purple-600' :
-                                                    row.status === 'Pending' ? 'bg-yellow-50 text-yellow-600' :
-                                                        row.status === 'On Hold' ? 'bg-orange-50 text-orange-600' :
-                                                            'bg-red-50 text-red-600'
-                                                }`}>
-                                                <span className={`material-symbols-rounded text-[14px] leading-none ${row.status === 'Paid' ? 'text-green-500' :
-                                                    row.status === 'Processing' ? 'text-purple-500' :
-                                                        row.status === 'Pending' ? 'text-yellow-500' :
-                                                            row.status === 'On Hold' ? 'text-orange-500' :
-                                                                'text-red-500'
-                                                    }`}>
+                                            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-extrabold shadow-sm border border-transparent ${getStatusStyle(row.status)}`}>
+                                                <span className={`material-symbols-rounded text-[14px] leading-none`}>
                                                     {getStatusIcon(row.status)}
                                                 </span>
                                                 {row.status}
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 text-right">
-                                            <button className="w-8 h-8 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 flex items-center justify-center transition-colors">
-                                                <span className="material-symbols-rounded text-lg">more_vert</span>
+                                            <button
+                                                onClick={() => handleDownload(row.id)}
+                                                className="w-8 h-8 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 flex items-center justify-center transition-colors"
+                                                title="Download PDF"
+                                            >
+                                                <span className="material-symbols-rounded text-lg">download</span>
                                             </button>
                                         </td>
                                     </tr>

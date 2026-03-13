@@ -10,9 +10,24 @@ const DocumentDetail = ({ document, onBack, onDelete }) => {
 
     // --- Action Handlers ---
 
+    const getFileUrl = (url) => {
+        if (!url) return '';
+        if (url.startsWith('http')) return url;
+        const baseUrl = 'http://localhost:8000';
+        return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+    };
+
     const handleDownload = () => {
-        // Mock download functionality
-        alert(`Starting download for ${document.filename}...`);
+        const fileUrl = getFileUrl(document.file);
+        if (fileUrl) {
+            const link = window.document.createElement('a');
+            link.href = fileUrl;
+            link.download = document.filename || document.name;
+            link.target = '_blank';
+            window.document.body.appendChild(link);
+            link.click();
+            window.document.body.removeChild(link);
+        }
     };
 
     const handlePrint = () => {
@@ -121,51 +136,47 @@ const DocumentDetail = ({ document, onBack, onDelete }) => {
                         </div>
                     </div>
 
-                    {/* Document Content Area (Mock) */}
-                    <div className="flex-grow flex items-center justify-center bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-dashed border-border-light dark:border-border-dark p-8 overflow-auto">
-                        <div
-                            className="text-center w-full transition-transform duration-200 ease-out"
-                            style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
-                        >
-                            <span className="material-symbols-rounded text-6xl text-gray-300 dark:text-slate-600 mb-4">description</span>
-                            <p className="text-text-muted-light dark:text-text-muted-dark mb-8">Document Preview Placeholder</p>
-
-                            {/* Mock Document Page */}
-                            <div className="bg-white dark:bg-slate-900 p-8 shadow-sm max-w-3xl mx-auto text-left rounded-lg border border-gray-200 dark:border-slate-700 h-[800px] overflow-hidden relative">
-                                <h2 className="text-center font-bold text-xl mb-6 text-gray-800 dark:text-gray-200 uppercase">{document.name}</h2>
-                                <div className="space-y-4 text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                                    <p>
-                                        <strong>EFFECTIVE DATE:</strong> {document.date}
-                                    </p>
-                                    <p className="text-justify">
-                                        This document serves as a formal record of the <strong>{document.name}</strong>. It outlines the terms, conditions, and specifications related to {document.category}. All parties involved are required to adhere to the guidelines set forth herein.
-                                    </p>
-                                    <p className="text-justify">
-                                        <strong>1. PURPOSE</strong><br />
-                                        The purpose of this document is to establish a clear understanding of the expectations and responsibilities. This ensures transparency and accountability across all levels of the organization.
-                                    </p>
-                                    <p className="text-justify">
-                                        <strong>2. SCOPE</strong><br />
-                                        This policy applies to all employees, contractors, and stakeholders interacting with the {document.category} department. Deviations from this policy must be approved in writing by the designated authority.
-                                    </p>
-                                    <p className="text-justify">
-                                        <strong>3. CONFIDENTIALITY</strong><br />
-                                        Information contained within this document is classified as internal and confidential. Unauthorized distribution or reproduction is strictly prohibited.
-                                    </p>
-
-                                    {/* Obfuscated / Lorem Ipsum filler for visual texture */}
-                                    <p className="text-justify opacity-60 filter blur-[0.3px]">
-                                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-                                    </p>
-                                </div>
-
-                                {/* Footer of the page */}
-                                <div className="absolute bottom-8 left-8 right-8 flex justify-between text-xs text-gray-400 border-t pt-4">
-                                    <span>Page 1 of 28</span>
-                                    <span>{document.filename}</span>
+                    {/* Document Content Area */}
+                    <div className="flex-grow flex flex-col bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-border-light dark:border-border-dark overflow-hidden relative">
+                        {document.file_type?.toLowerCase().includes('pdf') ? (
+                            <div className="flex-grow w-full h-full p-2 overflow-auto custom-scrollbar flex items-start justify-center">
+                                <iframe
+                                    src={`${getFileUrl(document.file)}#toolbar=1&navpanes=1&scrollbar=1&view=FitH`}
+                                    className="w-full h-full min-h-[700px] rounded shadow-inner bg-white"
+                                    style={{
+                                        transform: zoomLevel !== 100 ? `scale(${zoomLevel / 100})` : 'none',
+                                        transformOrigin: 'top center',
+                                        width: zoomLevel > 100 ? `${zoomLevel}%` : '100%'
+                                    }}
+                                    title={document.name}
+                                />
+                            </div>
+                        ) : ['jpg', 'jpeg', 'png', 'gif', 'webp'].some(ext => document.file_type?.toLowerCase().includes(ext)) ? (
+                            <div className="flex-grow flex items-center justify-center p-4 overflow-auto">
+                                <div
+                                    className="transition-transform duration-200 ease-out"
+                                    style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'center' }}
+                                >
+                                    <img
+                                        src={getFileUrl(document.file)}
+                                        alt={document.name}
+                                        className="max-w-full h-auto rounded-lg shadow-lg"
+                                    />
                                 </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="text-center p-8">
+                                <span className="material-symbols-rounded text-6xl text-gray-300 dark:text-slate-600 mb-4">description</span>
+                                <p className="text-text-muted-light dark:text-text-muted-dark mb-4">Preview not available for this file type.</p>
+                                <button
+                                    onClick={handleDownload}
+                                    className="text-primary hover:underline font-medium flex items-center gap-2 mx-auto"
+                                >
+                                    Download to view
+                                    <span className="material-symbols-rounded text-lg">download</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -182,7 +193,7 @@ const DocumentDetail = ({ document, onBack, onDelete }) => {
                                     <h3 className="font-semibold text-text-main-light dark:text-text-main-dark truncate" title={document.name}>{document.name}</h3>
                                     <div className="flex items-center gap-2 mt-1">
                                         <span className={`px-2 py-0.5 rounded text-[10px] bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 font-medium`}>{document.category}</span>
-                                        <span className="px-2 py-0.5 rounded text-[10px] bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-300 font-medium uppercase">{document.type}</span>
+                                        <span className="px-2 py-0.5 rounded text-[10px] bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-300 font-medium uppercase">{document.file_type}</span>
                                     </div>
                                 </div>
                             </div>
@@ -194,7 +205,7 @@ const DocumentDetail = ({ document, onBack, onDelete }) => {
                                 </div>
                                 <div className="flex justify-between py-2 border-b border-border-light dark:border-border-dark">
                                     <span className="text-text-muted-light dark:text-text-muted-dark">Created</span>
-                                    <span className="font-medium text-text-main-light dark:text-text-main-dark">{document.date}</span>
+                                    <span className="font-medium text-text-main-light dark:text-text-main-dark">{document.uploaded_date}</span>
                                 </div>
                                 <div className="flex justify-between py-2 border-b border-border-light dark:border-border-dark">
                                     <span className="text-text-muted-light dark:text-text-muted-dark">Last Modified</span>
@@ -202,15 +213,17 @@ const DocumentDetail = ({ document, onBack, onDelete }) => {
                                 </div>
                                 <div className="flex justify-between py-2 border-b border-border-light dark:border-border-dark">
                                     <span className="text-text-muted-light dark:text-text-muted-dark">Uploaded</span>
-                                    <span className="font-medium text-text-main-light dark:text-text-main-dark">{document.date}</span>
+                                    <span className="font-medium text-text-main-light dark:text-text-main-dark">{document.uploaded_date}</span>
                                 </div>
                             </div>
 
                             <div className="mt-6">
                                 <h4 className="text-xs font-semibold text-text-muted-light dark:text-text-muted-dark uppercase mb-3">Owner</h4>
                                 <div className="flex items-center gap-3">
-                                    <img src={document.uploadedBy.avatar} alt={document.uploadedBy.name} className="w-8 h-8 rounded-full" />
-                                    <span className="text-sm font-medium text-text-main-light dark:text-text-main-dark">{document.uploadedBy.name}</span>
+                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                                        {document.uploaded_by_name?.charAt(0) || 'U'}
+                                    </div>
+                                    <span className="text-sm font-medium text-text-main-light dark:text-text-main-dark">{document.uploaded_by_name}</span>
                                 </div>
                             </div>
 

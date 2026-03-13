@@ -1,58 +1,43 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { getAttendanceRecords } from '../services/attendance';
 
 export default function AttendanceLog() {
-    const initialEmployees = [
-        {
-            name: 'Noah Kenji Tanaka',
-            id: '97174',
-            avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCGM6FREazzyJN3zlVtuhHld6tk5ZGDAWnWPsjccjZiMIjYx8Xu84zHSYik0DfzYnKaaDkZqX8cg-cVO3K1ReyudHRpHseJvmYEZwaRSkORxNm4JE7WCqADTnIPhp3oSAis8wXXIz-WujrhyU9KLgaICyymx1rRuCojv_VGcd6l3mgzljn-uY9A321vHjuxZR3J33JK1nDYownLPXiJJXf9D-2u4HZE0MAKv41UkTObvCaCYFDBVDzI46kvNb8PpMakBGanIrmDveYL',
-            department: 'Marketing',
-            date: '12 June 2025',
-            checkIn: '08.00',
-            checkOut: '17:00',
-            hours: '8h 18m',
-            status: 'On-Time',
-        },
-        {
-            name: 'Dante Haru Nakamura',
-            id: '43178',
-            avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDhOpXmWj43_LGDj69pGJmN5UvVkZWPUyF42C0DvPJxTP9D11QCs5_eqPntmlEVOeEHukjNldp2je0caldnp0xfIlQ-_hFiq6yATZlsJdyO6hazK74sK1jB8NL6vekG05ICWXY334TyHnkBaVBETRhZxNJTIM1Xbg1ETuoEoGLEJ5vhSwRS1A-Mk0OmysI33DUOJbqa1shpQPZ8WPKEOxG-5z1mkr24dN8IugxDZH1FpsCj_8aaYia-Mspd8rRiKMc-CbSMBjX9clXz',
-            department: 'Dev Team',
-            date: '12 June 2025',
-            checkIn: '07.40',
-            checkOut: '17:00',
-            hours: '9h 07m',
-            status: 'On-Time',
-        },
-        {
-            name: 'Dante Haru Nakamura',
-            id: '43179', // Changed ID to be unique for demo
-            avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCGnFrOr8CxiaNBetF4BcQmqzBJ3vhTa4-u9GxT0t5P5_5hZcvF25OBAkKGpL7xSyvG5J-_x4bqK6LB4IeGoBzRCjSK4nfyn_VlIq62BwsIjH9Os8u2g_SOXtlKHLvFbA7KkY55bXAz77Jo3y5OGfva86IJdHUrlyVLtEAbzgDtJU19fLouVzNnF3E-BN24M6Cjv20DEZuDbrse_j16Dz3qFNvQNiE1IqnrDklikYP3XdsfGgFOkAcOYnkCw0nIEf5xqy3SQm2RwCOW',
-            department: 'Dev Team',
-            date: '12 June 2025',
-            checkIn: '07.40',
-            checkOut: '17:00',
-            hours: '9h 07m',
-            status: 'On-Time',
-        },
-        {
-            name: 'Kaela Mitsuko Lane',
-            id: '22739',
-            avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDIwpih0jRA7g72NIT5k26xp5ulu5vqOE5hFqW40fqrw-avFWv88DGNVrLm12VDjr7ktRydxS7Dt-_IUPjZrfYnYJveM3knE55j2oNLRm0D-jAlA-9gQ75UgJQy_sqoVPAme5aBXx-Iw6zscSj7n5TLIxOzXE4j2HMlEmdqiOQXYQrYD3I7QeH4RcJIA3el1RU8hq9j5cb15myQnjy8-nb6Q3laKqN8zUef8_3EMeF__rqenNDQJMPphxZRLvdvZ_zY1Zek8ro6mC_l',
-            department: 'Operations',
-            date: '12 June 2025',
-            checkIn: '08.30',
-            checkOut: '-',
-            hours: '-',
-            status: 'Late',
-        },
-    ];
-
+    const [records, setRecords] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
     const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-    const [showActionsDropdown, setShowActionsDropdown] = useState(null); // format: { index: number } | null
+    const [showActionsDropdown, setShowActionsDropdown] = useState(null);
     const actionDropdownRef = useRef(null);
+
+    useEffect(() => {
+        const fetchAttendance = async () => {
+            try {
+                const response = await getAttendanceRecords();
+                // Handle paginated response
+                const data = response.results || response;
+
+                // Map backend data to frontend format
+                const mapped = Array.isArray(data) ? data.map(record => ({
+                    name: `${record.employee_name}`,
+                    id: record.employee,
+                    avatar: `https://i.pravatar.cc/150?u=${record.employee}`,
+                    department: record.department_name || 'N/A',
+                    date: record.date ? new Date(record.date).toLocaleDateString() : 'N/A',
+                    checkIn: record.clock_in ? record.clock_in.substring(0, 5) : '-',
+                    checkOut: record.clock_out ? record.clock_out.substring(0, 5) : '-',
+                    hours: record.hours_worked || '-',
+                    status: record.status || 'Present',
+                })) : [];
+                setRecords(mapped);
+            } catch (err) {
+                console.error('Failed to fetch attendance', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchAttendance();
+    }, []);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -67,11 +52,9 @@ export default function AttendanceLog() {
         };
     }, []);
 
-    // Search Logic
-    const filteredEmployees = initialEmployees.filter(emp => {
+    const filteredEmployees = records.filter(emp => {
         const matchesSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            emp.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            emp.id.includes(searchTerm);
+            emp.department.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesFilter = filterStatus === 'All' || emp.status === filterStatus;
         return matchesSearch && matchesFilter;
     });
@@ -120,6 +103,17 @@ export default function AttendanceLog() {
             </span>
         );
     };
+
+    if (loading) {
+        return (
+            <div className="bg-surface-light dark:bg-surface-dark rounded-2xl p-6 shadow-soft border border-border-light dark:border-border-dark flex items-center justify-center min-h-[300px]">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    <span className="text-sm text-text-muted-light dark:text-text-muted-dark font-medium">Loading attendance records...</span>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-surface-light dark:bg-surface-dark rounded-2xl p-6 shadow-soft border border-border-light dark:border-border-dark">

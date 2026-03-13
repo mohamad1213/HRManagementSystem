@@ -46,11 +46,13 @@ const ReviewDocumentModal = ({ isOpen, onClose, document, onConfirm }) => {
                             </div>
 
                             <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-200 dark:border-slate-700">
-                                <img src={document.uploadedBy.avatar} alt={document.uploadedBy.name} className="w-5 h-5 rounded-full" />
+                                <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[8px] font-bold text-primary">
+                                    {document.uploaded_by_name?.charAt(0) || 'U'}
+                                </div>
                                 <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                                    <span className="font-medium text-gray-700 dark:text-gray-300">{document.uploadedBy.name}</span>
+                                    <span className="font-medium text-gray-700 dark:text-gray-300">{document.uploaded_by_name}</span>
                                     <span>•</span>
-                                    <span>{document.date}</span>
+                                    <span>{document.uploaded_date}</span>
                                     <span>•</span>
                                     <span>{document.size}</span>
                                 </div>
@@ -66,8 +68,8 @@ const ReviewDocumentModal = ({ isOpen, onClose, document, onConfirm }) => {
                             <button
                                 onClick={() => setDecision('approve')}
                                 className={`relative p-4 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2 text-center group ${decision === 'approve'
-                                        ? 'border-green-500 bg-green-50/50 dark:bg-green-900/10'
-                                        : 'border-gray-200 dark:border-slate-700 hover:border-green-200 dark:hover:border-green-900/30 bg-white dark:bg-surface-dark'
+                                    ? 'border-green-500 bg-green-50/50 dark:bg-green-900/10'
+                                    : 'border-gray-200 dark:border-slate-700 hover:border-green-200 dark:hover:border-green-900/30 bg-white dark:bg-surface-dark'
                                     }`}
                             >
                                 {decision === 'approve' && (
@@ -89,8 +91,8 @@ const ReviewDocumentModal = ({ isOpen, onClose, document, onConfirm }) => {
                             <button
                                 onClick={() => setDecision('reject')}
                                 className={`relative p-4 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2 text-center group ${decision === 'reject'
-                                        ? 'border-red-500 bg-red-50/50 dark:bg-red-900/10'
-                                        : 'border-gray-200 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-900/30 bg-white dark:bg-surface-dark'
+                                    ? 'border-red-500 bg-red-50/50 dark:bg-red-900/10'
+                                    : 'border-gray-200 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-900/30 bg-white dark:bg-surface-dark'
                                     }`}
                             >
                                 {decision === 'reject' && (

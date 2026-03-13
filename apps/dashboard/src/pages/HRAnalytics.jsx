@@ -1,62 +1,91 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { getDashboardAnalytics } from '../services/analytics';
 
 export default function HRAnalytics({ onMenuClick }) {
-    // --- Data Mocks ---
-    const movementData = [
-        { name: 'Jan', newHires: 12, departure: 10 },
-        { name: 'Feb', newHires: 25, departure: 15 },
-        { name: 'Mar', newHires: 12, departure: 10 },
-        { name: 'Apr', newHires: 18, departure: 16 },
-        { name: 'Mei', newHires: 11, departure: 11 },
-        { name: 'Jun', newHires: 15, departure: 12 },
-        { name: 'Jul', newHires: 22, departure: 18 },
-        { name: 'Aug', newHires: 22, departure: 14 },
-        { name: 'Sep', newHires: 28, departure: 16 },
-        { name: 'Oct', newHires: 15, departure: 13 },
-        { name: 'Nov', newHires: 29, departure: 18 },
-        { name: 'Dec', newHires: 18, departure: 20 },
-    ];
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [analyticsData, setAnalyticsData] = useState({
+        metrics: [],
+        movement_trend: [],
+        attendance_trend: [],
+        department_composition: [],
+        department_progress: []
+    });
 
-    const attendanceTrendData = [
-        { name: 'Jan', onTime: 180, late: 80 },
-        { name: 'Feb', onTime: 380, late: 140 },
-        { name: 'Mar', onTime: 370, late: 130 },
-        { name: 'Apr', onTime: 220, late: 100 },
-        { name: 'Mei', onTime: 400, late: 180 },
-        { name: 'Jun', onTime: 480, late: 100 },
-        { name: 'Jul', onTime: 200, late: 80 },
-        { name: 'Aug', onTime: 180, late: 130 },
-        { name: 'Sep', onTime: 380, late: 100 },
-    ];
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const data = await getDashboardAnalytics();
+                setAnalyticsData(data);
+                setError(null);
+            } catch (err) {
+                console.error("Failed to fetch analytics:", err);
+                setError("Failed to load analytics data. Please try again later.");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
 
-    const departmentComposition = [
-        { name: 'Product', value: 450, color: '#a855f7' },
-        { name: 'Development', value: 340, color: '#ec4899' },
-        { name: 'Researcher', value: 140, color: '#fb923c' },
-        { name: 'Marketing', value: 110, color: '#d1d5db' },
-    ];
+    const {
+        metrics,
+        movement_trend: movementData,
+        attendance_trend: attendanceTrendData,
+        department_composition: departmentComposition,
+        department_progress: deptProgressData
+    } = analyticsData;
 
-    const deptProgressData = [
-        { name: 'Engineering', value: 90, color: 'bg-purple-500' },
-        { name: 'Sales', value: 60, color: 'bg-sky-400' },
-        { name: 'Marketing', value: 40, color: 'bg-yellow-400' },
-        { name: 'Product', value: 30, color: 'bg-orange-400' },
-        { name: 'Researcher', value: 12, color: 'bg-red-400' },
-        { name: 'Researcher', value: 10, color: 'bg-pink-400' },
-    ];
 
-    const metrics = [
-        { label: 'Total Employee', value: '5.480', icon: 'group', color: 'bg-purple-100 text-purple-600' },
-        { label: 'Job Aplication', value: '1120', icon: 'work', color: 'bg-purple-100 text-purple-600' },
-        { label: 'New Employee', value: '24', icon: 'person_add', color: 'bg-purple-100 text-purple-600' },
-        { label: 'Satisfaction Rate', value: '94.8%', icon: 'favorite', color: 'bg-purple-100 text-purple-600' },
-    ];
+
+    // --- Handlers ---
+
+    const handleExport = () => {
+        if (loading) return;
+
+        // Prepare CSV Content
+        let csvContent = "data:text/csv;charset=utf-8,";
+
+        // 1. Employee Movement Trend
+        csvContent += "Employee Movement Trend\n";
+        csvContent += "Month,New Hires,Departure\n";
+        movementData.forEach(item => {
+            csvContent += `${item.name},${item.newHires},${item.departure}\n`;
+        });
+        csvContent += "\n";
+
+        // 2. Attendance Trend
+        csvContent += "Attendance Trend\n";
+        csvContent += "Month,On Time,Late\n";
+        attendanceTrendData.forEach(item => {
+            csvContent += `${item.name},${item.onTime},${item.late}\n`;
+        });
+        csvContent += "\n";
+
+        // 3. Department Composition
+        csvContent += "Department Composition\n";
+        csvContent += "Department,Value\n";
+        departmentComposition.forEach(item => {
+            csvContent += `${item.name},${item.value}\n`;
+        });
+
+        // Create download link
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "hr-analytics-report.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     // --- Components ---
 
+
     const MetricCard = ({ label, value, icon, color }) => (
-        <div className="bg-surface-light dark:bg-surface-dark p-6 rounded-2xl shadow-soft border border-border-light dark:border-border-dark">
+        <div className="bg-surface-light dark:bg-surface-dark p-6 rounded-2xl shadow-soft border border-border-light dark:border-border-dark transition-all hover:shadow-md">
             <div className="flex items-start gap-4 mb-4">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${color}`}>
                     <span className="material-symbols-rounded">{icon}</span>
@@ -73,6 +102,35 @@ export default function HRAnalytics({ onMenuClick }) {
             </div>
         </div>
     );
+
+    if (loading) {
+        return (
+            <div className="flex-1 flex items-center justify-center bg-background-light dark:bg-background-dark">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-text-muted-light dark:text-text-muted-dark font-medium">Loading analytics data...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex-1 flex items-center justify-center bg-background-light dark:bg-background-dark">
+                <div className="bg-red-50 dark:bg-red-900/20 p-8 rounded-2xl border border-red-100 dark:border-red-900/30 text-center max-w-md">
+                    <span className="material-symbols-rounded text-red-500 text-5xl mb-4">error</span>
+                    <h3 className="text-xl font-bold text-text-main-light dark:text-text-main-dark mb-2">Oops!</h3>
+                    <p className="text-text-muted-light dark:text-text-muted-dark mb-6">{error}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                    >
+                        Try Again
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <main className="flex-1 overflow-y-auto bg-background-light dark:bg-background-dark p-4 sm:p-6 md:p-8">
@@ -91,7 +149,10 @@ export default function HRAnalytics({ onMenuClick }) {
                         <p className="text-sm text-text-muted-light dark:text-text-muted-dark mt-1">Track Access And Improve Your Performance</p>
                     </div>
                 </div>
-                <button className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors shadow-lg shadow-purple-500/30">
+                <button
+                    onClick={handleExport}
+                    className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors shadow-lg shadow-purple-500/30"
+                >
                     Export
                     <span className="material-symbols-rounded text-lg">download</span>
                 </button>
